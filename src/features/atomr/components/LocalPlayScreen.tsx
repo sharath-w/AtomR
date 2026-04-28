@@ -6,6 +6,7 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
+import ReplayPanel from "./ReplayPanel";
 
 export default function LocalPlayScreen() {
 	const [rows, setRows] = useState(6);
@@ -13,6 +14,7 @@ export default function LocalPlayScreen() {
 	const [playerCount, setPlayerCount] = useState(2);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
+	const [replayOpen, setReplayOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -29,6 +31,7 @@ export default function LocalPlayScreen() {
 		activeCaptureKeys,
 		activeExplosions,
 		lastMove,
+		moveHistory,
 	} = useAtomRGame(rows, cols, playerCount, settingsResetToken);
 
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -116,7 +119,13 @@ export default function LocalPlayScreen() {
 						lastMove={lastMove}
 						onPlay={(row, col) => handleMove({ row, col })}
 					/>
-					<GameOverlay state={state} onReset={reset} />
+					<GameOverlay
+						state={state}
+						onReset={reset}
+						onReplay={
+							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
+						}
+					/>
 				</div>
 			</div>
 
@@ -140,6 +149,15 @@ export default function LocalPlayScreen() {
 					setSettingsResetToken((token) => token + 1);
 				}}
 				onClose={() => setSettingsOpen(false)}
+			/>
+
+			<ReplayPanel
+				open={replayOpen}
+				onClose={() => setReplayOpen(false)}
+				moveHistory={moveHistory}
+				rows={rows}
+				cols={cols}
+				playerCount={playerCount}
 			/>
 		</main>
 	);

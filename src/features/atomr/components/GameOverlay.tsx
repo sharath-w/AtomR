@@ -7,6 +7,7 @@ type GameOverlayProps = {
 	resetLabel?: string;
 	resetPending?: boolean;
 	playerNames?: Partial<Record<PlayerId, string>>;
+	onReplay?: () => void;
 };
 
 export default function GameOverlay({
@@ -15,6 +16,7 @@ export default function GameOverlay({
 	resetLabel = "play again",
 	resetPending = false,
 	playerNames,
+	onReplay,
 }: GameOverlayProps) {
 	if (!state.winner && !state.isDraw) {
 		return null;
@@ -73,21 +75,40 @@ export default function GameOverlay({
 					</span>
 				</div>
 
-				{/* Rematch button */}
-				<button
-					type="button"
-					onClick={onReset}
-					disabled={resetPending}
-					className="mt-2 rounded-full px-8 py-3 text-sm font-bold uppercase tracking-[0.25em] transition-transform duration-150 hover:scale-[1.04] active:scale-[0.97] disabled:opacity-60 disabled:scale-100 disabled:cursor-not-allowed"
-					style={{
-						fontFamily: "'Oxanium', sans-serif",
-						backgroundColor: winnerColor,
-						color: "#07070b",
-						boxShadow: `0 0 24px ${winnerColor}44`,
-					}}
-				>
-					{resetPending ? "…" : resetLabel}
-				</button>
+				{/* Action buttons */}
+				<div className="mt-2 flex items-center gap-3">
+					<button
+						type="button"
+						onClick={onReset}
+						disabled={resetPending}
+						className="rounded-full px-8 py-3 text-sm font-bold uppercase tracking-[0.25em] transition-transform duration-150 hover:scale-[1.04] active:scale-[0.97] disabled:opacity-60 disabled:scale-100 disabled:cursor-not-allowed"
+						style={{
+							fontFamily: "'Oxanium', sans-serif",
+							backgroundColor: winnerColor,
+							color: "#07070b",
+							boxShadow: `0 0 24px ${winnerColor}44`,
+						}}
+					>
+						{resetPending ? "…" : resetLabel}
+					</button>
+
+					{onReplay && (
+						<button
+							type="button"
+							onClick={onReplay}
+							className="rounded-full px-6 py-3 text-sm font-bold uppercase tracking-[0.25em] transition-transform duration-150 hover:scale-[1.04] active:scale-[0.97]"
+							style={{
+								fontFamily: "'Oxanium', sans-serif",
+								background: "transparent",
+								color: winnerColor,
+								border: `1.5px solid ${winnerColor}55`,
+								boxShadow: `0 0 16px ${winnerColor}18`,
+							}}
+						>
+							replay
+						</button>
+					)}
+				</div>
 			</div>
 		</div>
 	);

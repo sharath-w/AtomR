@@ -22,6 +22,7 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
+import ReplayPanel from "./ReplayPanel";
 
 function getAiNames(playerCount: number): Partial<Record<PlayerId, string>> {
 	return Object.fromEntries(
@@ -39,6 +40,7 @@ export default function AiBattleScreen() {
 	const [difficulty, setDifficulty] = useState(6);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
+	const [replayOpen, setReplayOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -56,6 +58,7 @@ export default function AiBattleScreen() {
 		activeCaptureKeys,
 		activeExplosions,
 		lastMove,
+		moveHistory,
 	} = useAtomRGame(rows, cols, playerCount, settingsResetToken);
 
 	const cpuTimerRef = useRef<number | null>(null);
@@ -207,6 +210,9 @@ export default function AiBattleScreen() {
 						onReset={reset}
 						resetLabel="run again"
 						playerNames={playerNames}
+						onReplay={
+							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
+						}
 					/>
 				</div>
 			</div>
@@ -231,6 +237,16 @@ export default function AiBattleScreen() {
 					setSettingsResetToken((token) => token + 1);
 				}}
 				onClose={() => setSettingsOpen(false)}
+			/>
+
+			<ReplayPanel
+				open={replayOpen}
+				onClose={() => setReplayOpen(false)}
+				moveHistory={moveHistory}
+				rows={rows}
+				cols={cols}
+				playerCount={playerCount}
+				playerNames={playerNames}
 			/>
 		</main>
 	);
