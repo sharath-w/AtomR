@@ -122,6 +122,23 @@ describe("AtomRBoard keyboard navigation", () => {
 		expect(onPlay).toHaveBeenNthCalledWith(2, 0, 1);
 	});
 
+	it("activates the focused cell for repeated Space keydown events", () => {
+		const onPlay = vi.fn();
+		renderBoard({ onPlay });
+
+		const b1 = getCell("B1");
+		b1.focus();
+
+		fireEvent.keyDown(b1, { key: " ", repeat: false });
+		fireEvent.keyDown(b1, { key: " ", repeat: true });
+		fireEvent.keyDown(b1, { key: " ", repeat: true });
+
+		expect(onPlay).toHaveBeenCalledTimes(3);
+		expect(onPlay).toHaveBeenNthCalledWith(1, 0, 1);
+		expect(onPlay).toHaveBeenNthCalledWith(2, 0, 1);
+		expect(onPlay).toHaveBeenNthCalledWith(3, 0, 1);
+	});
+
 	it("announces blocked illegal moves instead of playing them", () => {
 		const onPlay = vi.fn();
 		const state = createInitialGameState(2, 2);
