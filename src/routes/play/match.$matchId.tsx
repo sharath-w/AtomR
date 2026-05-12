@@ -712,19 +712,47 @@ function MatchPage() {
 							}
 
 							if (canQueuePremove) {
-								void queuePremove({
-									matchId: match._id,
-									row,
-									col,
-								})
-									.then(() => {
-										flashPremoveNotice(
-											`Premove ${String.fromCharCode(65 + col)}${row + 1} queued`,
-										);
-									})
-									.catch(() => {
+								const validationState = {
+									...matchState,
+									currentPlayer: viewerPlayerId,
+								};
+
+								setPendingPremoves((current) => {
+									const currentQueuedPremoves = toStoredQueuedPremoves(
+										current,
+										viewerPlayerId,
+									);
+
+									if (
+										!canAppendQueuedPremove(
+											validationState,
+											viewerPlayerId,
+											currentQueuedPremoves,
+											row,
+											col,
+										)
+									) {
 										flashPremoveNotice("Premove failed");
-									});
+										return current;
+									}
+
+									flashPremoveNotice(
+										`Premove ${formatBoardCoordinate(row, col)} queued`,
+									);
+									return getQueuedPremoves(
+										appendQueuedPremove(
+											currentQueuedPremoves,
+											viewerPlayerId,
+											createQueuedPremove(
+												row,
+												col,
+												match.turnNumber + current.length,
+												Date.now(),
+											),
+										),
+										viewerPlayerId,
+									).map((move) => ({ row: move.row, col: move.col }));
+								});
 								return;
 							}
 
