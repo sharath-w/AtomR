@@ -207,6 +207,7 @@ export default function AiPlayScreen() {
 				<div style={boardStyle} className="relative">
 					<AtomRBoard
 						state={state}
+						legalState={resolvedState}
 						activeColor={activeColor}
 						isAnimating={isAnimating}
 						activeExplosionKeys={activeExplosionKeys}
@@ -214,6 +215,10 @@ export default function AiPlayScreen() {
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						lastMove={lastMove}
+						interactablePlayer="p1"
+						allowInteractionWhileAnimating={
+							resolvedState.currentPlayer === "p1"
+						}
 						onPlay={(row, col) => {
 							if (isCpuThinking || resolvedState.currentPlayer !== "p1") return;
 							handleMove({ row, col });
