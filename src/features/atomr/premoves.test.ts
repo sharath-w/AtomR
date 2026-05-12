@@ -59,4 +59,13 @@ describe("premoves", () => {
 		});
 		expect(getExecutablePremove(state, "p2", illegalQueued)).toBeNull();
 	});
+
+	it("evaluates queue legality for the queuing player, not the current turn owner", () => {
+		const state = createInitialGameState(2, 2);
+		state.currentPlayer = "p1";
+		state.board[0][0] = { owner: "p2", count: 1 };
+
+		expect(canQueuePremove(state, "p2", 0, 0)).toBe(true);
+		expect(canQueuePremove(state, "p1", 0, 0)).toBe(false);
+	});
 });

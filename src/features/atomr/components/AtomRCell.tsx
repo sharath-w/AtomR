@@ -9,6 +9,7 @@ type AtomRCellProps = {
 	activeColor: string;
 	isLegal: boolean;
 	canInteract?: boolean;
+	canInteractWhileAnimating?: boolean;
 	isAnimating: boolean;
 	isExploding: boolean;
 	isCapturing: boolean;
@@ -97,6 +98,7 @@ export default function AtomRCell({
 	activeColor,
 	isLegal,
 	canInteract = true,
+	canInteractWhileAnimating = false,
 	isAnimating,
 	isExploding,
 	isCapturing,
@@ -113,7 +115,8 @@ export default function AtomRCell({
 		: null;
 	const queuedColor = queuedPlayer ? PLAYER_COLORS[queuedPlayer] : "#8df0ff";
 	const critical = isCellCritical(state, cell, position.row, position.col);
-	const disabled = !canInteract || !isLegal || isAnimating;
+	const disabled =
+		!canInteract || !isLegal || (isAnimating && !canInteractWhileAnimating);
 
 	// Background tint
 	let bgColor = "#141427";

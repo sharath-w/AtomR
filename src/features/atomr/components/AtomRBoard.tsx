@@ -15,11 +15,24 @@ type AtomRBoardProps = {
 	lastMove?: LastMove | null;
 	suggestedMove?: Position | null;
 	suggestedPlayer?: PlayerId | null;
+	legalPlayer?: PlayerId | null;
 	interactablePlayer?: PlayerId | null;
+	allowInteractionWhileAnimating?: boolean;
 	queuedMove?: Position | null;
 	queuedPlayer?: PlayerId | null;
 	onPlay: (row: number, col: number) => void;
 };
+
+function getLegalStateForPlayer(
+	state: GameState,
+	playerId?: PlayerId | null,
+): GameState {
+	if (!playerId) return state;
+	return {
+		...state,
+		currentPlayer: playerId,
+	};
+}
 
 export default function AtomRBoard({
 	state,
@@ -32,13 +45,16 @@ export default function AtomRBoard({
 	lastMove,
 	suggestedMove,
 	suggestedPlayer,
+	legalPlayer,
 	interactablePlayer,
+	allowInteractionWhileAnimating = false,
 	queuedMove,
 	queuedPlayer,
 	onPlay,
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
 	const captureSet = new Set(activeCaptureKeys);
+	const legalState = getLegalStateForPlayer(state, legalPlayer);
 	const cells = [];
 
 	for (let row = 0; row < state.rows; row += 1) {
@@ -52,11 +68,12 @@ export default function AtomRBoard({
 					cell={state.board[row][col]}
 					position={{ row, col }}
 					activeColor={activeColor}
-					isLegal={isLegalMove(state, row, col)}
+					isLegal={isLegalMove(legalState, row, col)}
 					canInteract={
 						interactablePlayer == null ||
 						state.currentPlayer === interactablePlayer
 					}
+					canInteractWhileAnimating={allowInteractionWhileAnimating}
 					isAnimating={isAnimating}
 					isExploding={explosionSet.has(positionKey)}
 					isCapturing={captureSet.has(positionKey)}

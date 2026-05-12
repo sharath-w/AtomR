@@ -335,8 +335,7 @@ function MatchPage() {
 		Boolean(viewerPlayerId) &&
 		viewerPlayerId !== matchState.currentPlayer &&
 		!matchState.winner &&
-		!settingsOpen &&
-		!isAnimating;
+		!settingsOpen;
 	const boardStatus = premoveNotice
 		? premoveNotice
 		: queuedPremove
@@ -553,7 +552,9 @@ function MatchPage() {
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						lastMove={lastMove}
+						legalPlayer={canQueuePremove ? viewerPlayerId : null}
 						interactablePlayer={viewerPlayerId}
+						allowInteractionWhileAnimating={canQueuePremove}
 						queuedMove={queuedPremove}
 						queuedPlayer={viewerPlayerId}
 						onPlay={(row, col) => {
