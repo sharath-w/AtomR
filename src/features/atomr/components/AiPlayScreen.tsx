@@ -61,6 +61,7 @@ export default function AiPlayScreen() {
 
 	const cpuTimerRef = useRef<number | null>(null);
 	const cpuTaskRef = useRef<AiMoveTask | null>(null);
+	const playerMovePendingRef = useRef(false);
 
 	const clearCpuTimer = useCallback(() => {
 		if (cpuTimerRef.current !== null) {
@@ -135,6 +136,15 @@ export default function AiPlayScreen() {
 	}, [handleMove, queuedMove, resolvedState]);
 
 	useEffect(() => {
+		if (
+			resolvedState.phase === "idle" &&
+			resolvedState.currentPlayer === "p1"
+		) {
+			playerMovePendingRef.current = false;
+		}
+	}, [resolvedState.currentPlayer, resolvedState.phase]);
+
+	useEffect(() => {
 		return () => {
 			clearCpuTimer();
 			cancelCpuTask();
@@ -145,6 +155,7 @@ export default function AiPlayScreen() {
 		clearCpuTimer();
 		cancelCpuTask();
 		setIsCpuThinking(false);
+		playerMovePendingRef.current = false;
 		setQueuedMove(null);
 		undo(resolvedState.turnNumber % 2 === 0 ? 2 : 1);
 	}, [cancelCpuTask, clearCpuTimer, resolvedState.turnNumber, undo]);
@@ -237,15 +248,16 @@ export default function AiPlayScreen() {
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						lastMove={lastMove}
-						legalPlayer={queuedMove ? "p1" : null}
+						legalPlayer="p1"
 						interactablePlayer="p1"
-						allowInteractionWhileAnimating={
-							resolvedState.currentPlayer === "p1" || queuedMove !== null
-						}
+						allowInteractionWhileAnimating
 						queuedMove={queuedMove}
 						queuedPlayer="p1"
 						onPlay={(row, col) => {
-							if (resolvedState.currentPlayer !== "p1") {
+							if (
+								playerMovePendingRef.current ||
+								resolvedState.currentPlayer !== "p1"
+							) {
 								const validationState = {
 									...resolvedState,
 									currentPlayer: "p1" as const,
@@ -260,12 +272,14 @@ export default function AiPlayScreen() {
 							}
 
 							if (isCpuThinking) return;
+							playerMovePendingRef.current = true;
 							handleMove({ row, col });
 						}}
 					/>
 					<GameOverlay
 						state={state}
 						onReset={() => {
+							playerMovePendingRef.current = false;
 							setQueuedMove(null);
 							reset();
 						}}
@@ -286,6 +300,7 @@ export default function AiPlayScreen() {
 				onApply={(newRows, newCols, newDifficulty) => {
 					clearCpuTimer();
 					setIsCpuThinking(false);
+					playerMovePendingRef.current = false;
 					setQueuedMove(null);
 					setRows(newRows);
 					setCols(newCols);
