@@ -7,7 +7,7 @@ type GameplayPreferences = {
 const STORAGE_KEY = "atomr:gameplay-preferences";
 
 const DEFAULT_PREFERENCES: GameplayPreferences = {
-	enablePremoves: false,
+	enablePremoves: true,
 };
 
 function readPreferences(): GameplayPreferences {
