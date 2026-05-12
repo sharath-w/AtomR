@@ -71,6 +71,7 @@ export default function AtomRBoard({
 					isLegal={isLegalMove(legalState, row, col)}
 					canInteract={
 						interactablePlayer == null ||
+						legalPlayer != null ||
 						state.currentPlayer === interactablePlayer
 					}
 					canInteractWhileAnimating={allowInteractionWhileAnimating}
