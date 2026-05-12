@@ -8,12 +8,14 @@ type GameSettingsProps = {
 	playerCount?: number;
 	playerCountLocked?: boolean;
 	difficulty?: number;
+	enablePremoves?: boolean;
 	onApply: (
 		rows: number,
 		cols: number,
 		difficulty?: number,
 		playerCount?: number,
 	) => void;
+	onEnablePremovesChange?: (enabled: boolean) => void;
 	onClose: () => void;
 };
 
@@ -24,7 +26,9 @@ export default function GameSettings({
 	playerCount,
 	playerCountLocked = true,
 	difficulty,
+	enablePremoves,
 	onApply,
+	onEnablePremovesChange,
 	onClose,
 }: GameSettingsProps) {
 	const [localRows, setLocalRows] = useState(rows);
@@ -256,6 +260,26 @@ export default function GameSettings({
 								<span>10</span>
 							</div>
 						</div>
+					) : null}
+
+					{enablePremoves !== undefined && onEnablePremovesChange ? (
+						<label className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
+							<div className="min-w-0">
+								<div style={labelStyle}>premoves</div>
+								<div className="mt-1 text-[11px] leading-5 text-white/45">
+									Queue one move during the opponent turn and play it
+									automatically if it stays legal.
+								</div>
+							</div>
+							<input
+								type="checkbox"
+								checked={enablePremoves}
+								onChange={(event) =>
+									onEnablePremovesChange(event.target.checked)
+								}
+								className="h-4 w-4 accent-[oklch(0.72_0.19_23)]"
+							/>
+						</label>
 					) : null}
 
 					{/* Recommended size */}

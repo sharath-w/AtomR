@@ -15,6 +15,9 @@ type AtomRBoardProps = {
 	lastMove?: LastMove | null;
 	suggestedMove?: Position | null;
 	suggestedPlayer?: PlayerId | null;
+	interactablePlayer?: PlayerId | null;
+	queuedMove?: Position | null;
+	queuedPlayer?: PlayerId | null;
 	onPlay: (row: number, col: number) => void;
 };
 
@@ -29,6 +32,9 @@ export default function AtomRBoard({
 	lastMove,
 	suggestedMove,
 	suggestedPlayer,
+	interactablePlayer,
+	queuedMove,
+	queuedPlayer,
 	onPlay,
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
@@ -38,6 +44,7 @@ export default function AtomRBoard({
 	for (let row = 0; row < state.rows; row += 1) {
 		for (let col = 0; col < state.cols; col += 1) {
 			const positionKey = `${row}:${col}`;
+			const isQueued = queuedMove?.row === row && queuedMove.col === col;
 			cells.push(
 				<AtomRCell
 					key={`cell-${row}-${col}`}
@@ -46,6 +53,10 @@ export default function AtomRBoard({
 					position={{ row, col }}
 					activeColor={activeColor}
 					isLegal={isLegalMove(state, row, col)}
+					canInteract={
+						interactablePlayer === null ||
+						state.currentPlayer === interactablePlayer
+					}
 					isAnimating={isAnimating}
 					isExploding={explosionSet.has(positionKey)}
 					isCapturing={captureSet.has(positionKey)}
@@ -57,7 +68,9 @@ export default function AtomRBoard({
 							lastMove.turnNumber === state.turnNumber + 1)
 					}
 					isSuggested={suggestedMove?.row === row && suggestedMove?.col === col}
+					isQueued={isQueued}
 					suggestedPlayer={suggestedPlayer}
+					queuedPlayer={queuedPlayer}
 					onPlay={() => onPlay(row, col)}
 				/>,
 			);

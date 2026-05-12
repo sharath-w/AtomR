@@ -8,12 +8,15 @@ type AtomRCellProps = {
 	position: Position;
 	activeColor: string;
 	isLegal: boolean;
+	canInteract?: boolean;
 	isAnimating: boolean;
 	isExploding: boolean;
 	isCapturing: boolean;
 	isLastMove: boolean;
 	isSuggested: boolean;
+	isQueued?: boolean;
 	suggestedPlayer?: PlayerId | null;
+	queuedPlayer?: PlayerId | null;
 	onPlay: () => void;
 };
 
@@ -93,20 +96,24 @@ export default function AtomRCell({
 	position,
 	activeColor,
 	isLegal,
+	canInteract = true,
 	isAnimating,
 	isExploding,
 	isCapturing,
 	isLastMove,
 	isSuggested,
+	isQueued = false,
 	suggestedPlayer,
+	queuedPlayer,
 	onPlay,
 }: AtomRCellProps) {
 	const ownerColor = cell.owner ? PLAYER_COLORS[cell.owner] : null;
 	const suggestionColor = suggestedPlayer
 		? PLAYER_COLORS[suggestedPlayer]
 		: null;
+	const queuedColor = queuedPlayer ? PLAYER_COLORS[queuedPlayer] : "#8df0ff";
 	const critical = isCellCritical(state, cell, position.row, position.col);
-	const disabled = !isLegal || isAnimating;
+	const disabled = !canInteract || !isLegal || isAnimating;
 
 	// Background tint
 	let bgColor = "#141427";
@@ -125,8 +132,8 @@ export default function AtomRCell({
 			className="group relative cursor-pointer disabled:cursor-default"
 			aria-label={
 				cell.owner
-					? `${cell.owner} cell with ${cell.count} orb${cell.count === 1 ? "" : "s"}`
-					: "Empty cell"
+					? `${cell.owner} cell with ${cell.count} orb${cell.count === 1 ? "" : "s"}${isQueued ? ", premove queued" : ""}`
+					: `Empty cell${isQueued ? ", premove queued" : ""}`
 			}
 		>
 			{/* Main cell face */}
@@ -179,6 +186,17 @@ export default function AtomRCell({
 						}}
 					/>
 				)}
+
+				{isQueued ? (
+					<span
+						className="absolute inset-[8px] rounded-[4px] pointer-events-none"
+						style={{
+							boxShadow: `inset 0 0 0 2px ${queuedColor}cc, 0 0 0 1px ${queuedColor}33`,
+							outline: `1px dashed ${queuedColor}aa`,
+							outlineOffset: "-3px",
+						}}
+					/>
+				) : null}
 
 				{/* Capture ripple — expanding ring when orb lands */}
 				{isCapturing && ownerColor && (
