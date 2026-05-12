@@ -149,4 +149,27 @@ describe("premoves", () => {
 		expect(canQueuePremove(state, "p1", 0, 1)).toBe(false);
 		expect(canAppendQueuedPremove(state, "p1", queued, 0, 1)).toBe(true);
 	});
+
+	it("allows queueing the same cell repeatedly when the simulated sequence keeps it legal", () => {
+		const state = createInitialGameState(2, 2);
+		state.currentPlayer = "p2";
+
+		let queued = appendQueuedPremove(
+			undefined,
+			"p1",
+			createQueuedPremove(0, 0, 0, 10),
+		);
+
+		expect(canAppendQueuedPremove(state, "p1", queued, 0, 0)).toBe(true);
+
+		queued = appendQueuedPremove(
+			queued,
+			"p1",
+			createQueuedPremove(0, 0, 1, 20),
+		);
+
+		expect(
+			getQueuedPremoves(queued, "p1").map((move) => `${move.row}:${move.col}`),
+		).toEqual(["0:0", "0:0"]);
+	});
 });

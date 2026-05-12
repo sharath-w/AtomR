@@ -19,7 +19,6 @@ import {
 	canAppendQueuedPremove,
 	createQueuedPremove,
 	getQueuedPremoves,
-	removeQueuedPremoveAt,
 	type StoredQueuedPremoves,
 } from "#/features/atomr/premoves";
 import {
@@ -265,6 +264,20 @@ function MatchPage() {
 			}
 		};
 	}, []);
+
+	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Escape") return;
+			setPendingPremoves([]);
+			if (!match || !viewerPlayerId) return;
+			void clearPremove({ matchId: match._id }).then(() => {
+				flashPremoveNotice("Premove cleared");
+			});
+		}
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [clearPremove, match, viewerPlayerId]);
 
 	useEffect(() => {
 		if (!settingsOpen || !match || !viewerPlayerId) return;
@@ -655,22 +668,6 @@ function MatchPage() {
 										current,
 										viewerPlayerId,
 									);
-									const isQueued = getQueuedPremoves(
-										currentQueuedPremoves,
-										viewerPlayerId,
-									).some((move) => move.row === row && move.col === col);
-									if (isQueued) {
-										flashPremoveNotice("Premove cleared");
-										return getQueuedPremoves(
-											removeQueuedPremoveAt(
-												currentQueuedPremoves,
-												viewerPlayerId,
-												row,
-												col,
-											),
-											viewerPlayerId,
-										).map((move) => ({ row: move.row, col: move.col }));
-									}
 
 									if (
 										!canAppendQueuedPremove(
@@ -706,18 +703,6 @@ function MatchPage() {
 							}
 
 							if (canQueuePremove) {
-								const isSameQueuedMove = queuedPremoves.some(
-									(move) => move.row === row && move.col === col,
-								);
-								if (isSameQueuedMove) {
-									void clearPremove({ matchId: match._id, row, col }).then(
-										() => {
-											flashPremoveNotice("Premove cleared");
-										},
-									);
-									return;
-								}
-
 								void queuePremove({
 									matchId: match._id,
 									row,

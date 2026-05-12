@@ -17,7 +17,6 @@ import {
 	canAppendQueuedPremove,
 	createQueuedPremove,
 	getQueuedPremoves,
-	removeQueuedPremoveAt,
 	type StoredQueuedPremoves,
 } from "#/features/atomr/premoves";
 import type { Position } from "#/features/atomr/shared";
@@ -164,6 +163,16 @@ export default function AiPlayScreen() {
 	}, [resolvedState.currentPlayer, resolvedState.phase]);
 
 	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Escape") return;
+			setQueuedMoves([]);
+		}
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, []);
+
+	useEffect(() => {
 		return () => {
 			clearCpuTimer();
 			cancelCpuTask();
@@ -283,25 +292,6 @@ export default function AiPlayScreen() {
 								};
 								setQueuedMoves((current) => {
 									const currentQueuedPremoves = toStoredQueuedPremoves(current);
-									const existingQueuedPremoves = getQueuedPremoves(
-										currentQueuedPremoves,
-										"p1",
-									);
-									const isQueued = existingQueuedPremoves.some(
-										(move) => move.row === row && move.col === col,
-									);
-
-									if (isQueued) {
-										return getQueuedPremoves(
-											removeQueuedPremoveAt(
-												currentQueuedPremoves,
-												"p1",
-												row,
-												col,
-											),
-											"p1",
-										).map((move) => ({ row: move.row, col: move.col }));
-									}
 
 									if (
 										!canAppendQueuedPremove(
