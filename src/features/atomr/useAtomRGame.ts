@@ -49,6 +49,10 @@ function cloneBoard(board: Board): Board {
 	return board.map((row) => row.map((cell) => ({ ...cell })));
 }
 
+function settleState(state: GameState): GameState {
+	return state.phase === "idle" ? state : { ...state, phase: "idle" };
+}
+
 export type ActiveExplosion = {
 	row: number;
 	col: number;
@@ -361,7 +365,7 @@ export function useAtomRGame(
 		clearPlaybackTimers();
 		isAnimatingRef.current = true;
 
-		setResolvedState((s) => ({ ...s, phase: "resolving" }));
+		setResolvedState({ ...nextState, phase: "resolving" });
 		setDisplayedState((s) => ({ ...s, phase: "resolving" }));
 
 		if (events.length === 0) {
@@ -410,12 +414,21 @@ export function useAtomRGame(
 	}
 
 	function handleMove({ row, col }: Coordinates) {
-		if (!isLegalMove(displayedState, row, col) || isAnimatingRef.current)
-			return;
-		const boardBefore = cloneBoard(displayedState.board);
-		const result = applyMove(displayedState, row, col);
-		const currentPlayer = displayedState.currentPlayer;
-		const turnNum = displayedState.turnNumber + 1;
+		const baseState = settleState(resolvedState);
+		if (!isLegalMove(baseState, row, col)) return;
+
+		if (isAnimatingRef.current) {
+			clearPlaybackTimers();
+			setDisplayedState(baseState);
+			setActiveExplosionKeys([]);
+			setActiveCaptureKeys([]);
+			setActiveExplosions([]);
+		}
+
+		const boardBefore = cloneBoard(baseState.board);
+		const result = applyMove(baseState, row, col);
+		const currentPlayer = baseState.currentPlayer;
+		const turnNum = baseState.turnNumber + 1;
 		setLastMove({
 			row,
 			col,
@@ -439,13 +452,13 @@ export function useAtomRGame(
 			historyRef.current = [
 				...historyRef.current,
 				{
-					state: resolvedState,
+					state: baseState,
 					lastMove,
 				},
 			];
 			setCanUndo(true);
 		}
-		playEvents(result.events, result.state, displayedState.board);
+		playEvents(result.events, result.state, baseState.board);
 	}
 
 	function undo(moveCount = 1) {

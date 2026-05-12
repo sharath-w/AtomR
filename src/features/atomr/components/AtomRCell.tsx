@@ -16,7 +16,9 @@ type AtomRCellProps = {
 	isBlockedFeedback: boolean;
 	isLastMove: boolean;
 	isSuggested: boolean;
+	isQueued?: boolean;
 	suggestedPlayer?: PlayerId | null;
+	queuedPlayer?: PlayerId | null;
 	tabIndex?: number;
 	buttonRef?: Ref<HTMLButtonElement>;
 	onFocus?: () => void;
@@ -107,7 +109,9 @@ export default function AtomRCell({
 	isBlockedFeedback,
 	isLastMove,
 	isSuggested,
+	isQueued = false,
 	suggestedPlayer,
+	queuedPlayer,
 	tabIndex = -1,
 	buttonRef,
 	onFocus,
@@ -118,15 +122,17 @@ export default function AtomRCell({
 	const suggestionColor = suggestedPlayer
 		? PLAYER_COLORS[suggestedPlayer]
 		: null;
+	const queuedColor = queuedPlayer ? PLAYER_COLORS[queuedPlayer] : "#8df0ff";
 	const critical = isCellCritical(state, cell, position.row, position.col);
 	const cellCoordinate = `${String.fromCharCode(65 + position.col)}${position.row + 1}`;
-	const availability = isAnimating
-		? "resolving"
-		: canActivate
-			? "legal"
-			: isLegal
-				? "unavailable right now"
-				: "illegal";
+	const availability = canActivate
+		? "legal"
+		: isLegal
+			? isAnimating
+				? "resolving"
+				: "unavailable right now"
+			: "illegal";
+	const queuedSuffix = isQueued ? ", premove queued" : "";
 
 	// Background tint
 	let bgColor = "#141427";
@@ -149,8 +155,8 @@ export default function AtomRCell({
 			aria-disabled={!canActivate}
 			aria-label={
 				cell.owner
-					? `${cellCoordinate}, ${cell.owner} cell with ${cell.count} orb${cell.count === 1 ? "" : "s"}, ${critical ? "critical, " : ""}${availability}`
-					: `${cellCoordinate}, empty cell, ${availability}`
+					? `${cellCoordinate}, ${cell.owner} cell with ${cell.count} orb${cell.count === 1 ? "" : "s"}, ${critical ? "critical, " : ""}${availability}${queuedSuffix}`
+					: `${cellCoordinate}, empty cell, ${availability}${queuedSuffix}`
 			}
 		>
 			{/* Main cell face */}
@@ -222,6 +228,17 @@ export default function AtomRCell({
 						}}
 					/>
 				)}
+
+				{isQueued ? (
+					<span
+						className="absolute inset-[8px] rounded-[4px] pointer-events-none"
+						style={{
+							boxShadow: `inset 0 0 0 2px ${queuedColor}cc, 0 0 0 1px ${queuedColor}33`,
+							outline: `1px dashed ${queuedColor}aa`,
+							outlineOffset: "-3px",
+						}}
+					/>
+				) : null}
 
 				{/* Capture ripple — expanding ring when orb lands */}
 				{isCapturing && ownerColor && (

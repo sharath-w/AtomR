@@ -8,6 +8,15 @@ import {
 	pickRandomLegalMove,
 } from '../src/features/atomr/shared-engine'
 import {
+	appendQueuedPremove,
+	canAppendQueuedPremove,
+	clearQueuedPremove,
+	getExecutablePremove,
+	getQueuedPremoves,
+	removeQueuedPremoveAt,
+	shiftQueuedPremove,
+} from '../src/features/atomr/premoves'
+import {
 	ONLINE_TURN_TIME_LIMIT_MS,
 	createPlayerFlags,
 	type GameState,
@@ -239,6 +248,19 @@ async function scheduleTurnTimeout(
 	)
 }
 
+async function scheduleQueuedPremoveExecution(
+	ctx: any,
+	args: {
+		matchId: any
+		expectedTurnNumber: number
+		expectedCurrentPlayer: PlayerId
+		expectedLastMoveAt: number
+	},
+) {
+	const internalApi = internal as any
+	await ctx.scheduler.runAfter(0, internalApi.online.executeQueuedPremove, args)
+}
+
 async function persistResolvedMove(
 	ctx: any,
 	match: any,
@@ -258,8 +280,8 @@ async function persistResolvedMove(
 		result: ReturnType<typeof applyMove>
 	},
 ) {
-	await ctx.db.patch(match._id, {
-		board: result.state.board,
+		await ctx.db.patch(match._id, {
+			board: result.state.board,
 		playerCount: result.state.playerCount,
 		currentPlayer: result.state.currentPlayer,
 		turnNumber: result.state.turnNumber,
@@ -269,8 +291,9 @@ async function persistResolvedMove(
 		phase: result.state.phase,
 		lastMoveEvents: result.events,
 		lastMoveAt: now,
-		endedAt: result.state.winner ? now : undefined,
-	})
+			queuedPremoves: shiftQueuedPremove(match.queuedPremoves, playerId),
+			endedAt: result.state.winner ? now : undefined,
+		})
 
 	await ctx.db.insert('matchMoves', {
 		matchId: match._id,
@@ -284,6 +307,13 @@ async function persistResolvedMove(
 	})
 
 	if (!result.state.winner) {
+		await scheduleQueuedPremoveExecution(ctx, {
+			matchId: match._id,
+			expectedTurnNumber: result.state.turnNumber,
+			expectedCurrentPlayer: result.state.currentPlayer,
+			expectedLastMoveAt: now,
+		})
+
 		await scheduleTurnTimeout(ctx, {
 			matchId: match._id,
 			expectedTurnNumber: result.state.turnNumber,
@@ -439,8 +469,9 @@ export const joinPrivateRoom = mutation({
 			phase: initialState.phase,
 			lastMoveEvents: [],
 			createdAt: now,
-			startedAt: now,
-			lastMoveAt: now,
+		startedAt: now,
+		lastMoveAt: now,
+		queuedPremoves: {},
 		})
 
 		await scheduleTurnTimeout(ctx, {
@@ -499,8 +530,9 @@ export const joinQueue = mutation({
 				phase: initialState.phase,
 				lastMoveEvents: [],
 				createdAt: now,
-				startedAt: now,
-				lastMoveAt: now,
+			startedAt: now,
+			lastMoveAt: now,
+			queuedPremoves: {},
 			})
 
 			await scheduleTurnTimeout(ctx, {
@@ -629,8 +661,9 @@ export const getMatch = query({
 			player2: player2
 				? {
 						displayName: player2.displayName,
-					}
+				  }
 				: null,
+			queuedPremoves: match.queuedPremoves ?? {},
 			viewerPlayerId,
 		}
 	},
@@ -710,6 +743,53 @@ export const resolveTurnTimeout = internalMutation({
 	},
 })
 
+export const executeQueuedPremove = internalMutation({
+	args: {
+		matchId: v.id('matches'),
+		expectedTurnNumber: v.number(),
+		expectedCurrentPlayer: v.union(v.literal('p1'), v.literal('p2')),
+		expectedLastMoveAt: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const match = await ctx.db.get(args.matchId)
+		if (!match) return { executed: false }
+		if (match.winner || match.phase !== 'idle') return { executed: false }
+		if (match.turnNumber !== args.expectedTurnNumber) return { executed: false }
+		if (match.currentPlayer !== args.expectedCurrentPlayer) return { executed: false }
+		if (match.lastMoveAt !== args.expectedLastMoveAt) return { executed: false }
+
+		const playerId = match.currentPlayer as PlayerId
+		const state = toGameState(match)
+		const premove = getExecutablePremove(state, playerId, match.queuedPremoves)
+		if (!premove) {
+			const existing = getQueuedPremoves(match.queuedPremoves, playerId)
+			if (existing.length > 0) {
+				await ctx.db.patch(match._id, {
+					queuedPremoves: clearQueuedPremove(match.queuedPremoves, playerId),
+				})
+			}
+			return { executed: false }
+		}
+
+		const now = Date.now()
+		const result = applyMove(state, premove.row, premove.col)
+		await persistResolvedMove(ctx, match, {
+			playerId,
+			userId: getPlayerUserId(match, playerId),
+			row: premove.row,
+			col: premove.col,
+			now,
+			result,
+		})
+
+		return {
+			executed: true,
+			row: premove.row,
+			col: premove.col,
+		}
+	},
+})
+
 export const claimTurnTimeout = mutation({
 	args: {
 		matchId: v.id('matches'),
@@ -772,6 +852,76 @@ export const submitMove = mutation({
 			state: result.state,
 			events: result.events,
 		}
+	},
+})
+
+export const queuePremove = mutation({
+	args: {
+		matchId: v.id('matches'),
+		row: v.number(),
+		col: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const { viewer } = await ensureCurrentUser(ctx)
+
+		const match = await ctx.db.get(args.matchId)
+		if (!match) throw new Error('Match not found')
+		if (match.winner || match.phase !== 'idle') {
+			throw new Error('Match is already finished')
+		}
+
+		let playerId: PlayerId | null = null
+		if (match.player1UserId === viewer._id) playerId = 'p1'
+		if (match.player2UserId === viewer._id) playerId = 'p2'
+		if (!playerId) throw new Error('Not part of this match')
+		if (match.currentPlayer === playerId) {
+			throw new Error('Cannot queue premove on your turn')
+		}
+
+		const state = toGameState(match)
+		if (
+			!canAppendQueuedPremove(state, playerId, match.queuedPremoves, args.row, args.col)
+		) {
+			throw new Error('Illegal premove')
+		}
+
+		const queuedPremoves = appendQueuedPremove(match.queuedPremoves, playerId, {
+			row: args.row,
+			col: args.col,
+			queuedAtTurn: match.turnNumber,
+			queuedAtMs: Date.now(),
+		})
+
+		await ctx.db.patch(match._id, { queuedPremoves })
+		return {
+			queuedPremoves,
+			playerId,
+		}
+	},
+})
+
+export const clearPremove = mutation({
+	args: {
+		matchId: v.id('matches'),
+		row: v.optional(v.number()),
+		col: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { viewer } = await ensureCurrentUser(ctx)
+		const match = await ctx.db.get(args.matchId)
+		if (!match) throw new Error('Match not found')
+
+		let playerId: PlayerId | null = null
+		if (match.player1UserId === viewer._id) playerId = 'p1'
+		if (match.player2UserId === viewer._id) playerId = 'p2'
+		if (!playerId) throw new Error('Not part of this match')
+
+		const queuedPremoves =
+			args.row === undefined || args.col === undefined
+				? clearQueuedPremove(match.queuedPremoves, playerId)
+				: removeQueuedPremoveAt(match.queuedPremoves, playerId, args.row, args.col)
+		await ctx.db.patch(match._id, { queuedPremoves })
+		return { queuedPremoves, playerId }
 	},
 })
 

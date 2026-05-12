@@ -11,16 +11,26 @@ import {
 } from "react";
 import AtomRBoard from "#/features/atomr/components/AtomRBoard";
 import GameOverlay from "#/features/atomr/components/GameOverlay";
+import GameSettings from "#/features/atomr/components/GameSettings";
 import { PLAYER_COLORS } from "#/features/atomr/constants";
 import { getCapacity } from "#/features/atomr/engine";
 import {
+	appendQueuedPremove,
+	canAppendQueuedPremove,
+	createQueuedPremove,
+	getQueuedPremoves,
+	type StoredQueuedPremoves,
+} from "#/features/atomr/premoves";
+import {
 	type Board,
+	formatBoardCoordinate,
 	type GameState,
 	type LastMove,
 	ONLINE_TURN_TIME_LIMIT_MS,
 	ONLINE_VIEWER_HEARTBEAT_MS,
 	type PlayerId,
 } from "#/features/atomr/shared";
+import { useGameplayPreferences } from "#/features/atomr/useGameplayPreferences";
 import { useResolvedGamePlayback } from "#/features/atomr/useResolvedGamePlayback";
 import { getRecommendedSize } from "#/features/atomr/utils/recommendedSize";
 import { authClient } from "#/lib/auth-client";
@@ -49,15 +59,29 @@ function MatchPage() {
 	const syncViewer = useMutation(api.online.syncViewer);
 	const claimTurnTimeout = useMutation(api.online.claimTurnTimeout);
 	const submitMove = useMutation(api.online.submitMove);
+	const queuePremove = useMutation(api.online.queuePremove);
+	const clearPremove = useMutation(api.online.clearPremove);
 	const resignMatch = useMutation(api.online.resignMatch);
 	const [resignPending, setResignPending] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeoutClaimedForRef = useRef<string | null>(null);
+	const pendingPremoveFlushRef = useRef(false);
+	const queuedPremoveNoticeTimerRef = useRef<number | null>(null);
+	const [premoveNotice, setPremoveNotice] = useState<string | null>(null);
+	const [pendingPremoves, setPendingPremoves] = useState<
+		Array<{
+			row: number;
+			col: number;
+		}>
+	>([]);
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
 		null,
 	);
+	const { preferences, setEnablePremoves } = useGameplayPreferences();
 	const user = session?.user ?? null;
+	const activeMatchId = match?._id ?? null;
 	const viewerPlayerId: PlayerId | null =
 		match?.viewerPlayerId === "p1" || match?.viewerPlayerId === "p2"
 			? match.viewerPlayerId
@@ -66,6 +90,17 @@ function MatchPage() {
 	const heartbeatViewer = useEffectEvent(async () => {
 		if (!user) return;
 		await syncViewer({});
+	});
+
+	const flashPremoveNotice = useEffectEvent((message: string) => {
+		if (queuedPremoveNoticeTimerRef.current !== null) {
+			window.clearTimeout(queuedPremoveNoticeTimerRef.current);
+		}
+		setPremoveNotice(message);
+		queuedPremoveNoticeTimerRef.current = window.setTimeout(() => {
+			setPremoveNotice(null);
+			queuedPremoveNoticeTimerRef.current = null;
+		}, 1500);
 	});
 
 	useEffect(() => {
@@ -129,6 +164,19 @@ function MatchPage() {
 		playEvents,
 		resetToState,
 	} = playback;
+	const toStoredQueuedPremoves = (
+		moves: Array<{ row: number; col: number }>,
+		playerId: PlayerId,
+	): StoredQueuedPremoves => ({
+		[playerId]: moves.map((move, index) =>
+			createQueuedPremove(
+				move.row,
+				move.col,
+				match?.turnNumber ?? index,
+				index,
+			),
+		),
+	});
 	const prevServerTurnRef = useRef<number | null>(null);
 	const prevServerBoardRef = useRef<Board | null>(null);
 	const [optimisticPlacement, setOptimisticPlacement] = useState<{
@@ -176,6 +224,67 @@ function MatchPage() {
 			setOptimisticPlacement(null);
 		}
 	}, [match, optimisticPlacement]);
+
+	useEffect(() => {
+		if (
+			!match ||
+			!viewerPlayerId ||
+			pendingPremoveFlushRef.current ||
+			pendingPremoves.length === 0 ||
+			match.currentPlayer === viewerPlayerId
+		) {
+			return;
+		}
+
+		const premove = pendingPremoves[0];
+		pendingPremoveFlushRef.current = true;
+
+		void queuePremove({
+			matchId: match._id,
+			row: premove.row,
+			col: premove.col,
+		})
+			.then(() => {
+				setPendingPremoves((current) => current.slice(1));
+				flashPremoveNotice(
+					`Premove ${formatBoardCoordinate(premove.row, premove.col)} queued`,
+				);
+			})
+			.catch(() => {
+				flashPremoveNotice("Premove failed");
+			})
+			.finally(() => {
+				pendingPremoveFlushRef.current = false;
+			});
+	}, [match, pendingPremoves, queuePremove, viewerPlayerId]);
+
+	useEffect(() => {
+		return () => {
+			if (queuedPremoveNoticeTimerRef.current !== null) {
+				window.clearTimeout(queuedPremoveNoticeTimerRef.current);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Escape") return;
+			setPendingPremoves([]);
+			if (!match || !viewerPlayerId) return;
+			void clearPremove({ matchId: match._id }).then(() => {
+				flashPremoveNotice("Premove cleared");
+			});
+		}
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [clearPremove, match, viewerPlayerId]);
+
+	useEffect(() => {
+		if (!settingsOpen || !activeMatchId || !viewerPlayerId) return;
+		setPendingPremoves([]);
+		void clearPremove({ matchId: activeMatchId }).catch(() => {});
+	}, [activeMatchId, clearPremove, settingsOpen, viewerPlayerId]);
 
 	useEffect(() => {
 		if (!match || match.winner) return;
@@ -305,6 +414,47 @@ function MatchPage() {
 		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
 		: { width: "100%", height: "100%" };
 	const cellSize = boardDims ? boardDims.w / matchState.cols : 0;
+	const queuedPremoves =
+		pendingPremoves.length > 0
+			? pendingPremoves.map((move, index) => ({
+					row: move.row,
+					col: move.col,
+					queuedAtTurn: match.turnNumber + index,
+					queuedAtMs: index,
+				}))
+			: viewerPlayerId
+				? getQueuedPremoves(match.queuedPremoves, viewerPlayerId)
+				: [];
+	const queuedPremove = queuedPremoves[0] ?? null;
+	const queuedPremoveCount = queuedPremoves.length;
+	const queuedPremoveLabel = queuedPremove
+		? formatBoardCoordinate(queuedPremove.row, queuedPremove.col)
+		: null;
+	const canQueuePremove =
+		preferences.enablePremoves &&
+		Boolean(viewerPlayerId) &&
+		viewerPlayerId !== matchState.currentPlayer &&
+		!matchState.winner &&
+		!settingsOpen;
+	const canInteractDuringPlayback =
+		Boolean(viewerPlayerId) &&
+		!settingsOpen &&
+		!matchState.winner &&
+		(preferences.enablePremoves || viewerPlayerId === matchState.currentPlayer);
+	const boardStatus = premoveNotice
+		? premoveNotice
+		: queuedPremove
+			? queuedPremoveCount === 1
+				? `Premove ${queuedPremoveLabel} queued`
+				: `${queuedPremoveCount} premoves queued`
+			: matchState.winner
+				? "done"
+				: matchState.currentPlayer === viewerPlayerId
+					? "your turn"
+					: preferences.enablePremoves
+						? "waiting • premove ready"
+						: "waiting";
+
 	const displayState = (() => {
 		if (!optimisticPlacement) return playbackState;
 		if (playbackState.turnNumber !== optimisticPlacement.baseTurn) {
@@ -404,11 +554,7 @@ function MatchPage() {
 										{matchState.winner ? "—" : `${secondsRemaining}s`}
 									</div>
 									<div className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-white/42">
-										{matchState.winner
-											? "done"
-											: matchState.currentPlayer === viewerPlayerId
-												? "your turn"
-												: "waiting"}
+										{boardStatus}
 									</div>
 								</div>
 
@@ -429,44 +575,62 @@ function MatchPage() {
 							</div>
 						</div>
 
-						{/* Resign */}
-						<button
-							type="button"
-							disabled={resignPending || Boolean(matchState.winner)}
-							aria-hidden={Boolean(matchState.winner)}
-							tabIndex={matchState.winner ? -1 : undefined}
-							className={`flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-55 min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3 ${
-								matchState.winner ? "pointer-events-none invisible" : ""
-							}`}
-							style={{
-								background: "rgba(224,92,58,0.10)",
-								color: "rgba(255,159,134,0.88)",
-								fontFamily: "'Oxanium', sans-serif",
-								fontSize: "10px",
-								fontWeight: 700,
-								letterSpacing: "0.22em",
-								textTransform: "uppercase",
-							}}
-							onClick={async () => {
-								if (
-									!window.confirm(
-										"Resign this match? This immediately gives the win to your opponent.",
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setSettingsOpen(true)}
+								className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3"
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									color: "rgba(255,255,255,0.66)",
+									fontFamily: "'Oxanium', sans-serif",
+									fontSize: "10px",
+									fontWeight: 700,
+									letterSpacing: "0.22em",
+									textTransform: "uppercase",
+								}}
+							>
+								<span className="hidden min-[480px]:inline">prefs</span>
+								<span className="min-[480px]:hidden">P</span>
+							</button>
+							<button
+								type="button"
+								disabled={resignPending || Boolean(matchState.winner)}
+								aria-hidden={Boolean(matchState.winner)}
+								tabIndex={matchState.winner ? -1 : undefined}
+								className={`flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-55 min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3 ${
+									matchState.winner ? "pointer-events-none invisible" : ""
+								}`}
+								style={{
+									background: "rgba(224,92,58,0.10)",
+									color: "rgba(255,159,134,0.88)",
+									fontFamily: "'Oxanium', sans-serif",
+									fontSize: "10px",
+									fontWeight: 700,
+									letterSpacing: "0.22em",
+									textTransform: "uppercase",
+								}}
+								onClick={async () => {
+									if (
+										!window.confirm(
+											"Resign this match? This immediately gives the win to your opponent.",
+										)
 									)
-								)
-									return;
-								setResignPending(true);
-								try {
-									await resignMatch({ matchId: match._id });
-								} finally {
-									setResignPending(false);
-								}
-							}}
-						>
-							<Flag size={14} strokeWidth={2} />
-							<span className="hidden min-[480px]:inline">
-								{resignPending ? "…" : "resign"}
-							</span>
-						</button>
+										return;
+									setResignPending(true);
+									try {
+										await resignMatch({ matchId: match._id });
+									} finally {
+										setResignPending(false);
+									}
+								}}
+							>
+								<Flag size={14} strokeWidth={2} />
+								<span className="hidden min-[480px]:inline">
+									{resignPending ? "…" : "resign"}
+								</span>
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -478,6 +642,7 @@ function MatchPage() {
 				<div style={boardStyle} className="relative">
 					<AtomRBoard
 						state={displayState}
+						legalState={matchState}
 						activeColor={activeColor}
 						isAnimating={isAnimating}
 						activeExplosionKeys={activeExplosionKeys}
@@ -485,18 +650,87 @@ function MatchPage() {
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						lastMove={lastMove}
+						legalPlayer={canQueuePremove ? viewerPlayerId : null}
+						interactablePlayer={viewerPlayerId}
+						allowInteractionWhileAnimating={canInteractDuringPlayback}
+						queuedMoves={queuedPremoves}
+						queuedPlayer={viewerPlayerId}
 						keyboardNavigationEnabled={!matchState.winner}
 						canPlay={
 							!matchState.winner &&
 							Boolean(viewerPlayerId) &&
-							viewerPlayerId === matchState.currentPlayer &&
+							(viewerPlayerId === matchState.currentPlayer ||
+								canQueuePremove) &&
 							optimisticPlacement === null
 						}
 						onPlay={(row, col) => {
+							if (!match || !viewerPlayerId) return;
+
+							if (optimisticPlacement !== null) {
+								const validationState = {
+									...matchState,
+									currentPlayer: viewerPlayerId,
+								};
+
+								setPendingPremoves((current) => {
+									const currentQueuedPremoves = toStoredQueuedPremoves(
+										current,
+										viewerPlayerId,
+									);
+
+									if (
+										!canAppendQueuedPremove(
+											validationState,
+											viewerPlayerId,
+											currentQueuedPremoves,
+											row,
+											col,
+										)
+									) {
+										flashPremoveNotice("Premove failed");
+										return current;
+									}
+
+									flashPremoveNotice(
+										`Premove ${formatBoardCoordinate(row, col)} queued`,
+									);
+									return getQueuedPremoves(
+										appendQueuedPremove(
+											currentQueuedPremoves,
+											viewerPlayerId,
+											createQueuedPremove(
+												row,
+												col,
+												match.turnNumber + current.length,
+												Date.now(),
+											),
+										),
+										viewerPlayerId,
+									).map((move) => ({ row: move.row, col: move.col }));
+								});
+								return;
+							}
+
+							if (canQueuePremove) {
+								void queuePremove({
+									matchId: match._id,
+									row,
+									col,
+								})
+									.then(() => {
+										flashPremoveNotice(
+											`Premove ${String.fromCharCode(65 + col)}${row + 1} queued`,
+										);
+									})
+									.catch(() => {
+										flashPremoveNotice("Premove failed");
+									});
+								return;
+							}
+
 							if (
 								!viewerPlayerId ||
 								viewerPlayerId !== matchState.currentPlayer ||
-								isAnimating ||
 								optimisticPlacement !== null
 							)
 								return;
@@ -537,6 +771,22 @@ function MatchPage() {
 					/>
 				</div>
 			</div>
+			<GameSettings
+				open={settingsOpen}
+				rows={matchState.rows}
+				cols={matchState.cols}
+				enablePremoves={preferences.enablePremoves}
+				onEnablePremovesChange={(enabled) => {
+					setEnablePremoves(enabled);
+					if (!enabled && match && viewerPlayerId) {
+						void clearPremove({ matchId: match._id });
+					}
+				}}
+				onApply={() => {
+					// Online match settings do not mutate board size mid-match.
+				}}
+				onClose={() => setSettingsOpen(false)}
+			/>
 		</main>
 	);
 }

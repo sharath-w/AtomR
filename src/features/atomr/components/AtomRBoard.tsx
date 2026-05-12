@@ -8,6 +8,7 @@ import { useBoardKeyboardNavigation } from "./useBoardKeyboardNavigation";
 
 type AtomRBoardProps = {
 	state: GameState;
+	legalState?: GameState;
 	activeColor: string;
 	isAnimating: boolean;
 	activeExplosionKeys: string[];
@@ -17,6 +18,11 @@ type AtomRBoardProps = {
 	lastMove?: LastMove | null;
 	suggestedMove?: Position | null;
 	suggestedPlayer?: PlayerId | null;
+	legalPlayer?: PlayerId | null;
+	interactablePlayer?: PlayerId | null;
+	allowInteractionWhileAnimating?: boolean;
+	queuedMoves?: Position[] | null;
+	queuedPlayer?: PlayerId | null;
 	keyboardNavigationEnabled?: boolean;
 	canPlay?: boolean;
 	onPlay: (row: number, col: number) => void;
@@ -26,8 +32,20 @@ function getCellIndex(row: number, col: number, cols: number) {
 	return row * cols + col;
 }
 
+function getLegalStateForPlayer(
+	state: GameState,
+	playerId?: PlayerId | null,
+): GameState {
+	if (!playerId) return state;
+	return {
+		...state,
+		currentPlayer: playerId,
+	};
+}
+
 export default function AtomRBoard({
 	state,
+	legalState,
 	activeColor,
 	isAnimating,
 	activeExplosionKeys,
@@ -37,12 +55,30 @@ export default function AtomRBoard({
 	lastMove,
 	suggestedMove,
 	suggestedPlayer,
+	legalPlayer,
+	interactablePlayer,
+	allowInteractionWhileAnimating = false,
+	queuedMoves,
+	queuedPlayer,
 	keyboardNavigationEnabled = false,
 	canPlay = true,
 	onPlay,
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
 	const captureSet = new Set(activeCaptureKeys);
+	const queuedSet = new Set(
+		(queuedMoves ?? []).map((position) => `${position.row}:${position.col}`),
+	);
+	const effectiveLegalState = getLegalStateForPlayer(
+		legalState ?? state,
+		legalPlayer,
+	);
+	const boardCanPlay =
+		canPlay &&
+		(interactablePlayer == null ||
+			legalPlayer != null ||
+			legalState != null ||
+			state.currentPlayer === interactablePlayer);
 	const cellRefs = useRef<Array<HTMLButtonElement | null>>([]);
 	const {
 		focusedPosition,
@@ -54,11 +90,12 @@ export default function AtomRBoard({
 		handleBoardFocusCapture,
 		handleBoardBlurCapture,
 	} = useBoardKeyboardNavigation({
-		state,
+		state: effectiveLegalState,
 		lastMove,
 		enabled: keyboardNavigationEnabled,
-		canPlay,
+		canPlay: boardCanPlay,
 		isAnimating,
+		allowInteractionWhileAnimating,
 		onPlay,
 		cellRefs,
 	});
@@ -67,8 +104,12 @@ export default function AtomRBoard({
 	for (let row = 0; row < state.rows; row += 1) {
 		for (let col = 0; col < state.cols; col += 1) {
 			const positionKey = `${row}:${col}`;
-			const isLegal = isLegalMove(state, row, col);
-			const canActivate = canPlay && isLegal && !isAnimating;
+			const isQueued = queuedSet.has(positionKey);
+			const isLegal = isLegalMove(effectiveLegalState, row, col);
+			const canActivate =
+				boardCanPlay &&
+				isLegal &&
+				(!isAnimating || allowInteractionWhileAnimating);
 			cells.push(
 				<AtomRCell
 					key={`cell-${row}-${col}`}
@@ -90,7 +131,9 @@ export default function AtomRBoard({
 							lastMove.turnNumber === state.turnNumber + 1)
 					}
 					isSuggested={suggestedMove?.row === row && suggestedMove?.col === col}
+					isQueued={isQueued}
 					suggestedPlayer={suggestedPlayer}
+					queuedPlayer={queuedPlayer}
 					tabIndex={
 						keyboardNavigationEnabled
 							? focusedPosition.row === row && focusedPosition.col === col

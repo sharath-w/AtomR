@@ -25,6 +25,13 @@ const playerFlags = v.object({
 	p8: v.optional(v.boolean()),
 })
 
+const queuedPremove = v.object({
+	row: v.number(),
+	col: v.number(),
+	queuedAtTurn: v.number(),
+	queuedAtMs: v.number(),
+})
+
 export default defineSchema({
 	users: defineTable({
 		authUserId: v.string(),
@@ -122,6 +129,12 @@ export default defineSchema({
 		startedAt: v.number(),
 		endedAt: v.optional(v.number()),
 		lastMoveAt: v.number(),
+		queuedPremoves: v.optional(
+			v.object({
+				p1: v.optional(v.union(queuedPremove, v.array(queuedPremove))),
+				p2: v.optional(v.union(queuedPremove, v.array(queuedPremove))),
+			}),
+		),
 		rematchMatchId: v.optional(v.id('matches')),
 	})
 		.index('by_player1_user_id', ['player1UserId'])

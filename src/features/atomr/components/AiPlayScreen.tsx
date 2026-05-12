@@ -11,6 +11,15 @@ import {
 	requestCpuMove,
 } from "#/features/atomr/ai-worker-client";
 import { PLAYER_COLORS } from "#/features/atomr/constants";
+import { isLegalMove } from "#/features/atomr/engine";
+import {
+	appendQueuedPremove,
+	canAppendQueuedPremove,
+	createQueuedPremove,
+	getQueuedPremoves,
+	type StoredQueuedPremoves,
+} from "#/features/atomr/premoves";
+import type { Position } from "#/features/atomr/shared";
 import { useAtomRGame } from "#/features/atomr/useAtomRGame";
 import { getRecommendedSize } from "#/features/atomr/utils/recommendedSize";
 import AtomRBoard from "./AtomRBoard";
@@ -32,6 +41,7 @@ export default function AiPlayScreen() {
 	const [isCpuThinking, setIsCpuThinking] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 	const [replayOpen, setReplayOpen] = useState(false);
+	const [queuedMoves, setQueuedMoves] = useState<Position[]>([]);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -56,8 +66,20 @@ export default function AiPlayScreen() {
 		enableHistory: true,
 	});
 
+	const toStoredQueuedPremoves = (moves: Position[]): StoredQueuedPremoves => ({
+		p1: moves.map((move, index) =>
+			createQueuedPremove(
+				move.row,
+				move.col,
+				resolvedState.turnNumber + index,
+				index,
+			),
+		),
+	});
+
 	const cpuTimerRef = useRef<number | null>(null);
 	const cpuTaskRef = useRef<AiMoveTask | null>(null);
+	const playerMovePendingRef = useRef(false);
 
 	const clearCpuTimer = useCallback(() => {
 		if (cpuTimerRef.current !== null) {
@@ -114,6 +136,43 @@ export default function AiPlayScreen() {
 	}, [cancelCpuTask, clearCpuTimer, difficulty, handleMove, resolvedState]);
 
 	useEffect(() => {
+		if (queuedMoves.length === 0) return;
+		if (
+			resolvedState.phase !== "idle" ||
+			resolvedState.currentPlayer !== "p1"
+		) {
+			return;
+		}
+		const [nextMove, ...remainingMoves] = queuedMoves;
+		if (!isLegalMove(resolvedState, nextMove.row, nextMove.col)) {
+			setQueuedMoves([]);
+			return;
+		}
+
+		setQueuedMoves(remainingMoves);
+		handleMove(nextMove);
+	}, [handleMove, queuedMoves, resolvedState]);
+
+	useEffect(() => {
+		if (
+			resolvedState.phase === "idle" &&
+			resolvedState.currentPlayer === "p1"
+		) {
+			playerMovePendingRef.current = false;
+		}
+	}, [resolvedState.currentPlayer, resolvedState.phase]);
+
+	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Escape") return;
+			setQueuedMoves([]);
+		}
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, []);
+
+	useEffect(() => {
 		return () => {
 			clearCpuTimer();
 			cancelCpuTask();
@@ -124,6 +183,8 @@ export default function AiPlayScreen() {
 		clearCpuTimer();
 		cancelCpuTask();
 		setIsCpuThinking(false);
+		playerMovePendingRef.current = false;
+		setQueuedMoves([]);
 		undo(resolvedState.turnNumber % 2 === 0 ? 2 : 1);
 	}, [cancelCpuTask, clearCpuTimer, resolvedState.turnNumber, undo]);
 
@@ -209,6 +270,7 @@ export default function AiPlayScreen() {
 				<div style={boardStyle} className="relative">
 					<AtomRBoard
 						state={state}
+						legalState={resolvedState}
 						activeColor={activeColor}
 						isAnimating={isAnimating}
 						activeExplosionKeys={activeExplosionKeys}
@@ -216,16 +278,66 @@ export default function AiPlayScreen() {
 						activeExplosions={activeExplosions}
 						cellSize={cellSize}
 						lastMove={lastMove}
+						legalPlayer="p1"
+						interactablePlayer="p1"
+						allowInteractionWhileAnimating
+						queuedMoves={queuedMoves}
+						queuedPlayer="p1"
 						keyboardNavigationEnabled={boardKeyboardEnabled}
-						canPlay={!isCpuThinking && resolvedState.currentPlayer === "p1"}
+						canPlay={!isCpuThinking}
 						onPlay={(row, col) => {
-							if (isCpuThinking || resolvedState.currentPlayer !== "p1") return;
+							if (
+								playerMovePendingRef.current ||
+								resolvedState.currentPlayer !== "p1"
+							) {
+								const validationState = {
+									...resolvedState,
+									currentPlayer: "p1" as const,
+								};
+								setQueuedMoves((current) => {
+									const currentQueuedPremoves = toStoredQueuedPremoves(current);
+
+									if (
+										!canAppendQueuedPremove(
+											validationState,
+											"p1",
+											currentQueuedPremoves,
+											row,
+											col,
+										)
+									) {
+										return current;
+									}
+
+									return getQueuedPremoves(
+										appendQueuedPremove(
+											currentQueuedPremoves,
+											"p1",
+											createQueuedPremove(
+												row,
+												col,
+												resolvedState.turnNumber + current.length,
+												Date.now(),
+											),
+										),
+										"p1",
+									).map((move) => ({ row: move.row, col: move.col }));
+								});
+								return;
+							}
+
+							if (isCpuThinking) return;
+							playerMovePendingRef.current = true;
 							handleMove({ row, col });
 						}}
 					/>
 					<GameOverlay
 						state={state}
-						onReset={reset}
+						onReset={() => {
+							playerMovePendingRef.current = false;
+							setQueuedMoves([]);
+							reset();
+						}}
 						playerNames={PLAYER_NAMES}
 						onReplay={
 							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
@@ -243,6 +355,8 @@ export default function AiPlayScreen() {
 				onApply={(newRows, newCols, newDifficulty) => {
 					clearCpuTimer();
 					setIsCpuThinking(false);
+					playerMovePendingRef.current = false;
+					setQueuedMoves([]);
 					setRows(newRows);
 					setCols(newCols);
 					if (newDifficulty !== undefined) {

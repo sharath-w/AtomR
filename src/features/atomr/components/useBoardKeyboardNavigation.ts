@@ -21,6 +21,7 @@ type UseBoardKeyboardNavigationOptions = {
 	enabled: boolean;
 	canPlay: boolean;
 	isAnimating: boolean;
+	allowInteractionWhileAnimating?: boolean;
 	onPlay: (row: number, col: number) => void;
 	cellRefs: MutableRefObject<Array<HTMLButtonElement | null>>;
 };
@@ -82,6 +83,7 @@ export function useBoardKeyboardNavigation({
 	enabled,
 	canPlay,
 	isAnimating,
+	allowInteractionWhileAnimating = false,
 	onPlay,
 	cellRefs,
 }: UseBoardKeyboardNavigationOptions) {
@@ -147,7 +149,7 @@ export function useBoardKeyboardNavigation({
 
 	const attemptPlay = useCallback(
 		(row: number, col: number) => {
-			if (isAnimating) {
+			if (isAnimating && !allowInteractionWhileAnimating) {
 				pulseBlockedCell(row, col, "Resolving...");
 				return;
 			}
@@ -168,7 +170,14 @@ export function useBoardKeyboardNavigation({
 
 			onPlay(row, col);
 		},
-		[canPlay, isAnimating, onPlay, pulseBlockedCell, state],
+		[
+			allowInteractionWhileAnimating,
+			canPlay,
+			isAnimating,
+			onPlay,
+			pulseBlockedCell,
+			state,
+		],
 	);
 
 	const moveFocusByArrow = useCallback(
@@ -333,10 +342,11 @@ export function useBoardKeyboardNavigation({
 	]);
 
 	useEffect(() => {
+		if (!enabled) return;
 		if (!isAnimating) return;
 		clearRepeat();
 		announceMessage("Resolving...");
-	}, [announceMessage, clearRepeat, isAnimating]);
+	}, [announceMessage, clearRepeat, enabled, isAnimating]);
 
 	useEffect(() => {
 		if (canPlay) return;
