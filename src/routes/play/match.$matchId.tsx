@@ -81,6 +81,7 @@ function MatchPage() {
 	);
 	const { preferences, setEnablePremoves } = useGameplayPreferences();
 	const user = session?.user ?? null;
+	const activeMatchId = match?._id ?? null;
 	const viewerPlayerId: PlayerId | null =
 		match?.viewerPlayerId === "p1" || match?.viewerPlayerId === "p2"
 			? match.viewerPlayerId
@@ -280,10 +281,10 @@ function MatchPage() {
 	}, [clearPremove, match, viewerPlayerId]);
 
 	useEffect(() => {
-		if (!settingsOpen || !match || !viewerPlayerId) return;
+		if (!settingsOpen || !activeMatchId || !viewerPlayerId) return;
 		setPendingPremoves([]);
-		void clearPremove({ matchId: match._id }).catch(() => {});
-	}, [clearPremove, match, settingsOpen, viewerPlayerId]);
+		void clearPremove({ matchId: activeMatchId }).catch(() => {});
+	}, [activeMatchId, clearPremove, settingsOpen, viewerPlayerId]);
 
 	useEffect(() => {
 		if (!match || match.winner) return;
