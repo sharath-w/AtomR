@@ -56,8 +56,10 @@ export default function AtomRBoard({
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
 	const captureSet = new Set(activeCaptureKeys);
-	const effectiveLegalState =
-		legalState ?? getLegalStateForPlayer(state, legalPlayer);
+	const effectiveLegalState = getLegalStateForPlayer(
+		legalState ?? state,
+		legalPlayer,
+	);
 	const cells = [];
 
 	for (let row = 0; row < state.rows; row += 1) {

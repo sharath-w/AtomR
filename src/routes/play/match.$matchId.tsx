@@ -336,6 +336,11 @@ function MatchPage() {
 		viewerPlayerId !== matchState.currentPlayer &&
 		!matchState.winner &&
 		!settingsOpen;
+	const canInteractDuringPlayback =
+		Boolean(viewerPlayerId) &&
+		!settingsOpen &&
+		!matchState.winner &&
+		(preferences.enablePremoves || viewerPlayerId === matchState.currentPlayer);
 	const boardStatus = premoveNotice
 		? premoveNotice
 		: queuedPremove
@@ -555,7 +560,7 @@ function MatchPage() {
 						lastMove={lastMove}
 						legalPlayer={canQueuePremove ? viewerPlayerId : null}
 						interactablePlayer={viewerPlayerId}
-						allowInteractionWhileAnimating={canQueuePremove}
+						allowInteractionWhileAnimating={canInteractDuringPlayback}
 						queuedMove={queuedPremove}
 						queuedPlayer={viewerPlayerId}
 						onPlay={(row, col) => {

@@ -71,4 +71,41 @@ describe("AtomRBoard interaction", () => {
 		fireEvent.click(cell);
 		expect(onPlay).toHaveBeenCalled();
 	});
+
+	it("applies legalPlayer on top of a separate legal state for off-turn premoves", () => {
+		const renderedState = createInitialGameState(2, 2);
+		renderedState.currentPlayer = "p1";
+		renderedState.board[0][0] = { owner: "p2", count: 1 };
+
+		const legalState = createInitialGameState(2, 2);
+		legalState.currentPlayer = "p1";
+		legalState.board[0][0] = { owner: "p2", count: 1 };
+
+		const onPlay = vi.fn();
+
+		const view = render(
+			<AtomRBoard
+				state={renderedState}
+				legalState={legalState}
+				activeColor="#ff00aa"
+				isAnimating
+				activeExplosionKeys={[]}
+				activeCaptureKeys={[]}
+				activeExplosions={[]}
+				cellSize={48}
+				legalPlayer="p2"
+				interactablePlayer="p2"
+				allowInteractionWhileAnimating
+				onPlay={onPlay}
+			/>,
+		);
+
+		const cell = within(view.container).getByRole("button", {
+			name: /p2 cell with 1 orb/i,
+		});
+
+		expect(cell.hasAttribute("disabled")).toBe(false);
+		fireEvent.click(cell);
+		expect(onPlay).toHaveBeenCalledWith(0, 0);
+	});
 });
