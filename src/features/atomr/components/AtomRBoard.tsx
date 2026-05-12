@@ -54,7 +54,7 @@ export default function AtomRBoard({
 					activeColor={activeColor}
 					isLegal={isLegalMove(state, row, col)}
 					canInteract={
-						interactablePlayer === null ||
+						interactablePlayer == null ||
 						state.currentPlayer === interactablePlayer
 					}
 					isAnimating={isAnimating}
