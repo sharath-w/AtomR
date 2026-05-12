@@ -102,4 +102,34 @@ describe("useAtomRGame undo history", () => {
 		expect(result.current.resolvedState.turnNumber).toBe(1);
 		expect(result.current.canUndo).toBe(false);
 	});
+
+	it("accepts the next legal move while the previous move is still animating", () => {
+		const { result } = renderHook(() =>
+			useAtomRGame(2, 2, 2, 0, { enableHistory: true }),
+		);
+
+		act(() => {
+			result.current.handleMove({ row: 0, col: 0 });
+		});
+
+		expect(result.current.isAnimating).toBe(true);
+		expect(result.current.resolvedState.currentPlayer).toBe("p2");
+
+		act(() => {
+			result.current.handleMove({ row: 1, col: 1 });
+		});
+
+		expect(result.current.lastMove).toMatchObject({
+			row: 1,
+			col: 1,
+			player: "p2",
+			turnNumber: 2,
+		});
+
+		flushPlayback();
+
+		expect(result.current.resolvedState.turnNumber).toBe(2);
+		expect(result.current.state.board[0][0]).toEqual({ owner: "p1", count: 1 });
+		expect(result.current.state.board[1][1]).toEqual({ owner: "p2", count: 1 });
+	});
 });

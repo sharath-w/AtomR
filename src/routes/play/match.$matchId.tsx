@@ -545,6 +545,7 @@ function MatchPage() {
 				<div style={boardStyle} className="relative">
 					<AtomRBoard
 						state={displayState}
+						legalState={matchState}
 						activeColor={activeColor}
 						isAnimating={isAnimating}
 						activeExplosionKeys={activeExplosionKeys}
@@ -589,7 +590,6 @@ function MatchPage() {
 							if (
 								!viewerPlayerId ||
 								viewerPlayerId !== matchState.currentPlayer ||
-								isAnimating ||
 								optimisticPlacement !== null
 							)
 								return;

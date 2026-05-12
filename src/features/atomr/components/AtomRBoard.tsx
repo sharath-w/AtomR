@@ -6,6 +6,7 @@ import FlyingOrbOverlay from "./FlyingOrbOverlay";
 
 type AtomRBoardProps = {
 	state: GameState;
+	legalState?: GameState;
 	activeColor: string;
 	isAnimating: boolean;
 	activeExplosionKeys: string[];
@@ -36,6 +37,7 @@ function getLegalStateForPlayer(
 
 export default function AtomRBoard({
 	state,
+	legalState,
 	activeColor,
 	isAnimating,
 	activeExplosionKeys,
@@ -54,7 +56,8 @@ export default function AtomRBoard({
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
 	const captureSet = new Set(activeCaptureKeys);
-	const legalState = getLegalStateForPlayer(state, legalPlayer);
+	const effectiveLegalState =
+		legalState ?? getLegalStateForPlayer(state, legalPlayer);
 	const cells = [];
 
 	for (let row = 0; row < state.rows; row += 1) {
@@ -68,10 +71,11 @@ export default function AtomRBoard({
 					cell={state.board[row][col]}
 					position={{ row, col }}
 					activeColor={activeColor}
-					isLegal={isLegalMove(legalState, row, col)}
+					isLegal={isLegalMove(effectiveLegalState, row, col)}
 					canInteract={
 						interactablePlayer == null ||
 						legalPlayer != null ||
+						legalState != null ||
 						state.currentPlayer === interactablePlayer
 					}
 					canInteractWhileAnimating={allowInteractionWhileAnimating}
