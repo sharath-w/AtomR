@@ -655,6 +655,14 @@ function MatchPage() {
 						allowInteractionWhileAnimating={canInteractDuringPlayback}
 						queuedMoves={queuedPremoves}
 						queuedPlayer={viewerPlayerId}
+						keyboardNavigationEnabled={!matchState.winner}
+						canPlay={
+							!matchState.winner &&
+							Boolean(viewerPlayerId) &&
+							(viewerPlayerId === matchState.currentPlayer ||
+								canQueuePremove) &&
+							optimisticPlacement === null
+						}
 						onPlay={(row, col) => {
 							if (!match || !viewerPlayerId) return;
 

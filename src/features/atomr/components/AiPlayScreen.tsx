@@ -229,6 +229,8 @@ export default function AiPlayScreen() {
 	const hudStyle: React.CSSProperties = boardDims
 		? { width: `${boardDims.w}px`, maxWidth: "100%" }
 		: { width: "100%", maxWidth: "100%" };
+	const boardKeyboardEnabled =
+		!settingsOpen && !replayOpen && !state.winner && !state.isDraw;
 	return (
 		<main
 			className="relative flex h-[100dvh] flex-col overflow-hidden px-3 pt-5 pb-4"
@@ -281,6 +283,8 @@ export default function AiPlayScreen() {
 						allowInteractionWhileAnimating
 						queuedMoves={queuedMoves}
 						queuedPlayer="p1"
+						keyboardNavigationEnabled={boardKeyboardEnabled}
+						canPlay={!isCpuThinking}
 						onPlay={(row, col) => {
 							if (
 								playerMovePendingRef.current ||
