@@ -13,10 +13,18 @@ import AtomRBoard from "#/features/atomr/components/AtomRBoard";
 import GameOverlay from "#/features/atomr/components/GameOverlay";
 import GameSettings from "#/features/atomr/components/GameSettings";
 import { PLAYER_COLORS } from "#/features/atomr/constants";
-import { getCapacity, isLegalMove } from "#/features/atomr/engine";
-import { getQueuedPremove } from "#/features/atomr/premoves";
+import { getCapacity } from "#/features/atomr/engine";
+import {
+	appendQueuedPremove,
+	canAppendQueuedPremove,
+	createQueuedPremove,
+	getQueuedPremoves,
+	removeQueuedPremoveAt,
+	type StoredQueuedPremoves,
+} from "#/features/atomr/premoves";
 import {
 	type Board,
+	formatBoardCoordinate,
 	type GameState,
 	type LastMove,
 	ONLINE_TURN_TIME_LIMIT_MS,
@@ -60,12 +68,15 @@ function MatchPage() {
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeoutClaimedForRef = useRef<string | null>(null);
+	const pendingPremoveFlushRef = useRef(false);
 	const queuedPremoveNoticeTimerRef = useRef<number | null>(null);
 	const [premoveNotice, setPremoveNotice] = useState<string | null>(null);
-	const [pendingPremove, setPendingPremove] = useState<{
-		row: number;
-		col: number;
-	} | null>(null);
+	const [pendingPremoves, setPendingPremoves] = useState<
+		Array<{
+			row: number;
+			col: number;
+		}>
+	>([]);
 	const [boardDims, setBoardDims] = useState<{ w: number; h: number } | null>(
 		null,
 	);
@@ -153,6 +164,19 @@ function MatchPage() {
 		playEvents,
 		resetToState,
 	} = playback;
+	const toStoredQueuedPremoves = (
+		moves: Array<{ row: number; col: number }>,
+		playerId: PlayerId,
+	): StoredQueuedPremoves => ({
+		[playerId]: moves.map((move, index) =>
+			createQueuedPremove(
+				move.row,
+				move.col,
+				match?.turnNumber ?? index,
+				index,
+			),
+		),
+	});
 	const prevServerTurnRef = useRef<number | null>(null);
 	const prevServerBoardRef = useRef<Board | null>(null);
 	const [optimisticPlacement, setOptimisticPlacement] = useState<{
@@ -205,14 +229,15 @@ function MatchPage() {
 		if (
 			!match ||
 			!viewerPlayerId ||
-			!pendingPremove ||
+			pendingPremoveFlushRef.current ||
+			pendingPremoves.length === 0 ||
 			match.currentPlayer === viewerPlayerId
 		) {
 			return;
 		}
 
-		const premove = pendingPremove;
-		setPendingPremove(null);
+		const premove = pendingPremoves[0];
+		pendingPremoveFlushRef.current = true;
 
 		void queuePremove({
 			matchId: match._id,
@@ -220,14 +245,18 @@ function MatchPage() {
 			col: premove.col,
 		})
 			.then(() => {
+				setPendingPremoves((current) => current.slice(1));
 				flashPremoveNotice(
-					`Premove ${String.fromCharCode(65 + premove.col)}${premove.row + 1} queued`,
+					`Premove ${formatBoardCoordinate(premove.row, premove.col)} queued`,
 				);
 			})
 			.catch(() => {
 				flashPremoveNotice("Premove failed");
+			})
+			.finally(() => {
+				pendingPremoveFlushRef.current = false;
 			});
-	}, [match, pendingPremove, queuePremove, viewerPlayerId]);
+	}, [match, pendingPremoves, queuePremove, viewerPlayerId]);
 
 	useEffect(() => {
 		return () => {
@@ -239,7 +268,7 @@ function MatchPage() {
 
 	useEffect(() => {
 		if (!settingsOpen || !match || !viewerPlayerId) return;
-		setPendingPremove(null);
+		setPendingPremoves([]);
 		void clearPremove({ matchId: match._id }).catch(() => {});
 	}, [clearPremove, match, settingsOpen, viewerPlayerId]);
 
@@ -371,16 +400,22 @@ function MatchPage() {
 		? { width: `${boardDims.w}px`, height: `${boardDims.h}px` }
 		: { width: "100%", height: "100%" };
 	const cellSize = boardDims ? boardDims.w / matchState.cols : 0;
-	const queuedPremove = pendingPremove
-		? {
-				row: pendingPremove.row,
-				col: pendingPremove.col,
-				queuedAtTurn: match.turnNumber,
-				queuedAtMs: 0,
-			}
-		: viewerPlayerId
-			? getQueuedPremove(match.queuedPremoves, viewerPlayerId)
-			: null;
+	const queuedPremoves =
+		pendingPremoves.length > 0
+			? pendingPremoves.map((move, index) => ({
+					row: move.row,
+					col: move.col,
+					queuedAtTurn: match.turnNumber + index,
+					queuedAtMs: index,
+				}))
+			: viewerPlayerId
+				? getQueuedPremoves(match.queuedPremoves, viewerPlayerId)
+				: [];
+	const queuedPremove = queuedPremoves[0] ?? null;
+	const queuedPremoveCount = queuedPremoves.length;
+	const queuedPremoveLabel = queuedPremove
+		? formatBoardCoordinate(queuedPremove.row, queuedPremove.col)
+		: null;
 	const canQueuePremove =
 		preferences.enablePremoves &&
 		Boolean(viewerPlayerId) &&
@@ -395,7 +430,9 @@ function MatchPage() {
 	const boardStatus = premoveNotice
 		? premoveNotice
 		: queuedPremove
-			? `Premove ${String.fromCharCode(65 + queuedPremove.col)}${queuedPremove.row + 1} queued`
+			? queuedPremoveCount === 1
+				? `Premove ${queuedPremoveLabel} queued`
+				: `${queuedPremoveCount} premoves queued`
 			: matchState.winner
 				? "done"
 				: matchState.currentPlayer === viewerPlayerId
@@ -602,7 +639,7 @@ function MatchPage() {
 						legalPlayer={canQueuePremove ? viewerPlayerId : null}
 						interactablePlayer={viewerPlayerId}
 						allowInteractionWhileAnimating={canInteractDuringPlayback}
-						queuedMove={queuedPremove}
+						queuedMoves={queuedPremoves}
 						queuedPlayer={viewerPlayerId}
 						onPlay={(row, col) => {
 							if (!match || !viewerPlayerId) return;
@@ -612,31 +649,72 @@ function MatchPage() {
 									...matchState,
 									currentPlayer: viewerPlayerId,
 								};
-								if (!isLegalMove(validationState, row, col)) {
-									flashPremoveNotice("Premove failed");
-									return;
-								}
 
-								setPendingPremove((current) =>
-									current?.row === row && current.col === col
-										? null
-										: { row, col },
-								);
-								flashPremoveNotice(
-									pendingPremove?.row === row && pendingPremove.col === col
-										? "Premove cleared"
-										: `Premove ${String.fromCharCode(65 + col)}${row + 1} queued`,
-								);
+								setPendingPremoves((current) => {
+									const currentQueuedPremoves = toStoredQueuedPremoves(
+										current,
+										viewerPlayerId,
+									);
+									const isQueued = getQueuedPremoves(
+										currentQueuedPremoves,
+										viewerPlayerId,
+									).some((move) => move.row === row && move.col === col);
+									if (isQueued) {
+										flashPremoveNotice("Premove cleared");
+										return getQueuedPremoves(
+											removeQueuedPremoveAt(
+												currentQueuedPremoves,
+												viewerPlayerId,
+												row,
+												col,
+											),
+											viewerPlayerId,
+										).map((move) => ({ row: move.row, col: move.col }));
+									}
+
+									if (
+										!canAppendQueuedPremove(
+											validationState,
+											viewerPlayerId,
+											currentQueuedPremoves,
+											row,
+											col,
+										)
+									) {
+										flashPremoveNotice("Premove failed");
+										return current;
+									}
+
+									flashPremoveNotice(
+										`Premove ${formatBoardCoordinate(row, col)} queued`,
+									);
+									return getQueuedPremoves(
+										appendQueuedPremove(
+											currentQueuedPremoves,
+											viewerPlayerId,
+											createQueuedPremove(
+												row,
+												col,
+												match.turnNumber + current.length,
+												Date.now(),
+											),
+										),
+										viewerPlayerId,
+									).map((move) => ({ row: move.row, col: move.col }));
+								});
 								return;
 							}
 
 							if (canQueuePremove) {
-								const isSameQueuedMove =
-									queuedPremove?.row === row && queuedPremove?.col === col;
+								const isSameQueuedMove = queuedPremoves.some(
+									(move) => move.row === row && move.col === col,
+								);
 								if (isSameQueuedMove) {
-									void clearPremove({ matchId: match._id }).then(() => {
-										flashPremoveNotice("Premove cleared");
-									});
+									void clearPremove({ matchId: match._id, row, col }).then(
+										() => {
+											flashPremoveNotice("Premove cleared");
+										},
+									);
 									return;
 								}
 

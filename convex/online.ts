@@ -8,10 +8,13 @@ import {
 	pickRandomLegalMove,
 } from '../src/features/atomr/shared-engine'
 import {
+	appendQueuedPremove,
+	canAppendQueuedPremove,
 	clearQueuedPremove,
 	getExecutablePremove,
-	getQueuedPremove,
-	setQueuedPremove,
+	getQueuedPremoves,
+	removeQueuedPremoveAt,
+	shiftQueuedPremove,
 } from '../src/features/atomr/premoves'
 import {
 	ONLINE_TURN_TIME_LIMIT_MS,
@@ -277,8 +280,8 @@ async function persistResolvedMove(
 		result: ReturnType<typeof applyMove>
 	},
 ) {
-	await ctx.db.patch(match._id, {
-		board: result.state.board,
+		await ctx.db.patch(match._id, {
+			board: result.state.board,
 		playerCount: result.state.playerCount,
 		currentPlayer: result.state.currentPlayer,
 		turnNumber: result.state.turnNumber,
@@ -288,9 +291,9 @@ async function persistResolvedMove(
 		phase: result.state.phase,
 		lastMoveEvents: result.events,
 		lastMoveAt: now,
-		queuedPremoves: clearQueuedPremove(match.queuedPremoves, playerId),
-		endedAt: result.state.winner ? now : undefined,
-	})
+			queuedPremoves: shiftQueuedPremove(match.queuedPremoves, playerId),
+			endedAt: result.state.winner ? now : undefined,
+		})
 
 	await ctx.db.insert('matchMoves', {
 		matchId: match._id,
@@ -759,8 +762,8 @@ export const executeQueuedPremove = internalMutation({
 		const state = toGameState(match)
 		const premove = getExecutablePremove(state, playerId, match.queuedPremoves)
 		if (!premove) {
-			const existing = getQueuedPremove(match.queuedPremoves, playerId)
-			if (existing) {
+			const existing = getQueuedPremoves(match.queuedPremoves, playerId)
+			if (existing.length > 0) {
 				await ctx.db.patch(match._id, {
 					queuedPremoves: clearQueuedPremove(match.queuedPremoves, playerId),
 				})
@@ -876,21 +879,18 @@ export const queuePremove = mutation({
 		}
 
 		const state = toGameState(match)
-		const queuedPremoves = setQueuedPremove(match.queuedPremoves, playerId, {
+		if (
+			!canAppendQueuedPremove(state, playerId, match.queuedPremoves, args.row, args.col)
+		) {
+			throw new Error('Illegal premove')
+		}
+
+		const queuedPremoves = appendQueuedPremove(match.queuedPremoves, playerId, {
 			row: args.row,
 			col: args.col,
 			queuedAtTurn: match.turnNumber,
 			queuedAtMs: Date.now(),
 		})
-
-		const validationState = {
-			...state,
-			currentPlayer: playerId,
-		}
-		const probe = getExecutablePremove(validationState, playerId, queuedPremoves)
-		if (!probe) {
-			throw new Error('Illegal premove')
-		}
 
 		await ctx.db.patch(match._id, { queuedPremoves })
 		return {
@@ -903,6 +903,8 @@ export const queuePremove = mutation({
 export const clearPremove = mutation({
 	args: {
 		matchId: v.id('matches'),
+		row: v.optional(v.number()),
+		col: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const { viewer } = await ensureCurrentUser(ctx)
@@ -914,7 +916,10 @@ export const clearPremove = mutation({
 		if (match.player2UserId === viewer._id) playerId = 'p2'
 		if (!playerId) throw new Error('Not part of this match')
 
-		const queuedPremoves = clearQueuedPremove(match.queuedPremoves, playerId)
+		const queuedPremoves =
+			args.row === undefined || args.col === undefined
+				? clearQueuedPremove(match.queuedPremoves, playerId)
+				: removeQueuedPremoveAt(match.queuedPremoves, playerId, args.row, args.col)
 		await ctx.db.patch(match._id, { queuedPremoves })
 		return { queuedPremoves, playerId }
 	},

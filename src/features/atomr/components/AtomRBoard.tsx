@@ -19,7 +19,7 @@ type AtomRBoardProps = {
 	legalPlayer?: PlayerId | null;
 	interactablePlayer?: PlayerId | null;
 	allowInteractionWhileAnimating?: boolean;
-	queuedMove?: Position | null;
+	queuedMoves?: Position[] | null;
 	queuedPlayer?: PlayerId | null;
 	onPlay: (row: number, col: number) => void;
 };
@@ -50,12 +50,15 @@ export default function AtomRBoard({
 	legalPlayer,
 	interactablePlayer,
 	allowInteractionWhileAnimating = false,
-	queuedMove,
+	queuedMoves,
 	queuedPlayer,
 	onPlay,
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
 	const captureSet = new Set(activeCaptureKeys);
+	const queuedSet = new Set(
+		(queuedMoves ?? []).map((position) => `${position.row}:${position.col}`),
+	);
 	const effectiveLegalState = getLegalStateForPlayer(
 		legalState ?? state,
 		legalPlayer,
@@ -65,7 +68,7 @@ export default function AtomRBoard({
 	for (let row = 0; row < state.rows; row += 1) {
 		for (let col = 0; col < state.cols; col += 1) {
 			const positionKey = `${row}:${col}`;
-			const isQueued = queuedMove?.row === row && queuedMove.col === col;
+			const isQueued = queuedSet.has(positionKey);
 			cells.push(
 				<AtomRCell
 					key={`cell-${row}-${col}`}

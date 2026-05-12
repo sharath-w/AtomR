@@ -108,4 +108,32 @@ describe("AtomRBoard interaction", () => {
 		fireEvent.click(cell);
 		expect(onPlay).toHaveBeenCalledWith(0, 0);
 	});
+
+	it("marks multiple queued premove cells as queued", () => {
+		const state = createInitialGameState(2, 2);
+
+		const view = render(
+			<AtomRBoard
+				state={state}
+				activeColor="#ff00aa"
+				isAnimating={false}
+				activeExplosionKeys={[]}
+				activeCaptureKeys={[]}
+				activeExplosions={[]}
+				cellSize={48}
+				queuedMoves={[
+					{ row: 0, col: 0 },
+					{ row: 1, col: 1 },
+				]}
+				queuedPlayer="p1"
+				onPlay={() => {}}
+			/>,
+		);
+
+		expect(
+			within(view.container).getAllByRole("button", {
+				name: /premove queued/i,
+			}),
+		).toHaveLength(2);
+	});
 });

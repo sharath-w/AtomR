@@ -131,8 +131,8 @@ export default defineSchema({
 		lastMoveAt: v.number(),
 		queuedPremoves: v.optional(
 			v.object({
-				p1: v.optional(queuedPremove),
-				p2: v.optional(queuedPremove),
+				p1: v.optional(v.union(queuedPremove, v.array(queuedPremove))),
+				p2: v.optional(v.union(queuedPremove, v.array(queuedPremove))),
 			}),
 		),
 		rematchMatchId: v.optional(v.id('matches')),
