@@ -1,3 +1,4 @@
+import type { AuthClient } from "@convex-dev/better-auth/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider } from "convex/react";
@@ -19,7 +20,7 @@ export default function AppConvexProvider({
 		<ConvexProvider client={convexQueryClient.convexClient}>
 			<ConvexBetterAuthProvider
 				client={convexQueryClient.convexClient}
-				authClient={authClient}
+				authClient={authClient as unknown as AuthClient}
 			>
 				{children}
 			</ConvexBetterAuthProvider>
