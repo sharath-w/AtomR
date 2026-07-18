@@ -162,9 +162,9 @@ export default function AtomRBoard({
 			onBlurCapture={handleBoardBlurCapture}
 			className="w-full h-full overflow-hidden rounded-2xl p-px"
 			style={{
-				background: `linear-gradient(135deg, ${activeColor}55, ${activeColor}18 50%, ${activeColor}38)`,
+				background: `linear-gradient(135deg, color-mix(in srgb, ${activeColor} 33%, transparent), color-mix(in srgb, ${activeColor} 9%, transparent) 50%, color-mix(in srgb, ${activeColor} 22%, transparent))`,
 				transition: "background 1s ease",
-				boxShadow: `0 0 40px ${activeColor}14, 0 8px 60px rgba(0,0,0,0.5)`,
+				boxShadow: `0 0 40px color-mix(in srgb, ${activeColor} 8%, transparent), 0 8px 60px rgba(0,0,0,0.5)`,
 			}}
 		>
 			<div

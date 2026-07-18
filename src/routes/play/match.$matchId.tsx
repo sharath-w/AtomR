@@ -535,7 +535,7 @@ function MatchPage() {
 										className="h-3.5 w-3.5 shrink-0 rounded-full"
 										style={{
 											background: viewerColor,
-											boxShadow: `0 0 10px ${viewerColor}66`,
+											boxShadow: `0 0 10px color-mix(in srgb, ${viewerColor} 40%, transparent)`,
 										}}
 									/>
 									<span className="truncate text-[13px] font-semibold text-white/90">
@@ -569,7 +569,7 @@ function MatchPage() {
 										className="h-3.5 w-3.5 shrink-0 rounded-full"
 										style={{
 											background: opponentColor,
-											boxShadow: `0 0 10px ${opponentColor}66`,
+											boxShadow: `0 0 10px color-mix(in srgb, ${opponentColor} 40%, transparent)`,
 											opacity: 0.7,
 										}}
 									/>

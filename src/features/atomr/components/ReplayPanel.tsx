@@ -402,7 +402,7 @@ export default function ReplayPanel({
 									aria-selected={isSelected}
 									style={{
 										background: isSelected
-											? `linear-gradient(90deg, ${color}14, ${color}08)`
+											? `linear-gradient(90deg, color-mix(in srgb, ${color} 8%, transparent), color-mix(in srgb, ${color} 3%, transparent))`
 											: "transparent",
 										borderLeft: isSelected
 											? `2px solid ${color}`
@@ -414,7 +414,7 @@ export default function ReplayPanel({
 										className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
 										style={{
 											background: isSelected
-												? `${color}22`
+												? `color-mix(in srgb, ${color} 13%, transparent)`
 												: "rgba(255,255,255,0.04)",
 											color: isSelected ? color : "rgba(255,255,255,0.3)",
 										}}
@@ -427,7 +427,9 @@ export default function ReplayPanel({
 										className="block h-3 w-3 shrink-0 rounded-full"
 										style={{
 											backgroundColor: color,
-											boxShadow: isSelected ? `0 0 8px ${color}55` : "none",
+											boxShadow: isSelected
+												? `0 0 8px color-mix(in srgb, ${color} 33%, transparent)`
+												: "none",
 										}}
 									/>
 
@@ -476,11 +478,11 @@ export default function ReplayPanel({
 								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: !showAfter
-										? `${activeColor}18`
+										? `color-mix(in srgb, ${activeColor} 9%, transparent)`
 										: "rgba(255,255,255,0.02)",
 									color: !showAfter ? activeColor : "rgba(255,255,255,0.55)",
 									border: !showAfter
-										? `1px solid ${activeColor}33`
+										? `1px solid color-mix(in srgb, ${activeColor} 20%, transparent)`
 										: "1px solid rgba(255,255,255,0.06)",
 								}}
 							>
@@ -493,11 +495,11 @@ export default function ReplayPanel({
 								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: showAfter
-										? `${activeColor}18`
+										? `color-mix(in srgb, ${activeColor} 9%, transparent)`
 										: "rgba(255,255,255,0.02)",
 									color: showAfter ? activeColor : "rgba(255,255,255,0.55)",
 									border: showAfter
-										? `1px solid ${activeColor}33`
+										? `1px solid color-mix(in srgb, ${activeColor} 20%, transparent)`
 										: "1px solid rgba(255,255,255,0.06)",
 								}}
 							>
@@ -568,7 +570,7 @@ export default function ReplayPanel({
 									className="block h-2 w-2 rounded-full"
 									style={{
 										backgroundColor: activeColor,
-										boxShadow: `0 0 6px ${activeColor}66`,
+										boxShadow: `0 0 6px color-mix(in srgb, ${activeColor} 40%, transparent)`,
 									}}
 								/>
 								<span className="text-[11px] font-semibold">

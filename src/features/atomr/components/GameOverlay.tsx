@@ -75,7 +75,7 @@ export default function GameOverlay({
 							style={{
 								fontFamily: "'Oxanium', sans-serif",
 								color: winnerColor,
-								textShadow: `0 0 40px ${winnerColor}55`,
+								textShadow: `0 0 40px color-mix(in srgb, ${winnerColor} 33%, transparent)`,
 							}}
 						>
 							{winnerName}
@@ -117,7 +117,7 @@ export default function GameOverlay({
 							fontFamily: "'Oxanium', sans-serif",
 							backgroundColor: winnerColor,
 							color: "#07070b",
-							boxShadow: `0 0 24px ${winnerColor}44`,
+							boxShadow: `0 0 24px color-mix(in srgb, ${winnerColor} 27%, transparent)`,
 						}}
 					>
 						{resetPending ? "…" : resetLabel}
@@ -132,8 +132,8 @@ export default function GameOverlay({
 								fontFamily: "'Oxanium', sans-serif",
 								background: "transparent",
 								color: winnerColor,
-								border: `1.5px solid ${winnerColor}55`,
-								boxShadow: `0 0 16px ${winnerColor}18`,
+								border: `1.5px solid color-mix(in srgb, ${winnerColor} 33%, transparent)`,
+								boxShadow: `0 0 16px color-mix(in srgb, ${winnerColor} 9%, transparent)`,
 							}}
 						>
 							replay
