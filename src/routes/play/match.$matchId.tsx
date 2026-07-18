@@ -837,6 +837,7 @@ function MatchPage() {
 			/>
 			<OnboardingOverlay
 				forceOpen={rulesOpen}
+				autoShow={false}
 				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
