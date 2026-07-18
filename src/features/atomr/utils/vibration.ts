@@ -2,29 +2,13 @@
  * Web Vibration API wrapper. Pleasant subtle haptics only — no sound.
  * Reads enabled flag from gameplay preferences on module load.
  */
+import { readGameplayPreferences } from "./gameplayPreferences";
 
-const STORAGE_KEY = "atomr:gameplay-preferences";
-
-function readEnabled(): boolean {
-	if (typeof window === "undefined") return false;
-	try {
-		const stored = window.localStorage.getItem(STORAGE_KEY);
-		if (!stored) return true;
-		const parsed = JSON.parse(stored);
-		return parsed.enableVibration !== false;
-	} catch {
-		return true;
-	}
-}
-
-let enabled = readEnabled();
+let enabled =
+	typeof window !== "undefined" && readGameplayPreferences().enableVibration;
 
 export function setVibrationEnabled(value: boolean) {
 	enabled = value;
-}
-
-export function isVibrationEnabled(): boolean {
-	return enabled;
 }
 
 function hasVibration(): boolean {
@@ -33,10 +17,10 @@ function hasVibration(): boolean {
 	);
 }
 
-export function vibrate(pattern: number | number[]): void {
+export function vibrate(pattern: number | readonly number[]): void {
 	if (!enabled || !hasVibration()) return;
 	try {
-		navigator.vibrate(pattern);
+		navigator.vibrate(typeof pattern === "number" ? pattern : [...pattern]);
 	} catch {
 		// Vibration failures must never break gameplay.
 	}
