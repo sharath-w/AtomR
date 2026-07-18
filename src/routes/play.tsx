@@ -12,7 +12,7 @@ import {
 	Swords,
 	Wifi,
 } from "lucide-react";
-import type { CSSProperties, ComponentType } from "react";
+import type { ComponentType, CSSProperties } from "react";
 
 export const Route = createFileRoute("/play")({
 	head: () => ({
@@ -36,12 +36,21 @@ type ModeTint = {
 };
 
 type Mode = {
-	to: "/play/local" | "/play/online" | "/play/training" | "/play/ai" | "/play/ai-battle";
+	to:
+		| "/play/local"
+		| "/play/online"
+		| "/play/training"
+		| "/play/ai"
+		| "/play/ai-battle";
 	title: string;
 	kicker: string;
 	copy: string;
 	meta?: string;
-	icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+	icon: ComponentType<{
+		size?: number;
+		strokeWidth?: number;
+		className?: string;
+	}>;
 	tint: ModeTint;
 };
 

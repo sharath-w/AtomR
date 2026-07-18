@@ -9,7 +9,7 @@ import {
 import { countPlayerOrbsInState } from "../selectors";
 import { ONLINE_TURN_TIME_LIMIT_MS } from "../shared";
 import type { GameState, PlayerId } from "../types";
-import { vibrationPatterns, vibrate } from "../utils/vibration";
+import { vibrate, vibrationPatterns } from "../utils/vibration";
 import PlayerBadge from "./PlayerBadge";
 
 const HUD_BUTTON_CLASS_NAME =

@@ -367,11 +367,7 @@ export function useAtomRGame(
 	}, []);
 
 	const playEvents = useCallback(
-		(
-			events: ResolutionEvent[],
-			nextState: GameState,
-			initialBoard: Board,
-		) => {
+		(events: ResolutionEvent[], nextState: GameState, initialBoard: Board) => {
 			clearPlaybackTimers();
 			isAnimatingRef.current = true;
 

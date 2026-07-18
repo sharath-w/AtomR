@@ -29,8 +29,7 @@ export function isVibrationEnabled(): boolean {
 
 function hasVibration(): boolean {
 	return (
-		typeof navigator !== "undefined" &&
-		typeof navigator.vibrate === "function"
+		typeof navigator !== "undefined" && typeof navigator.vibrate === "function"
 	);
 }
 

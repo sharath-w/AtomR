@@ -1,8 +1,12 @@
 import type { KeyboardEventHandler, Ref } from "react";
 import { PLAYER_COLORS } from "../constants";
-import { getCellCapacity, isCellCritical, isCellThreatened } from "../selectors";
-import type { Cell, GameState, PlayerId, Position } from "../types";
+import {
+	getCellCapacity,
+	isCellCritical,
+	isCellThreatened,
+} from "../selectors";
 import { formatBoardCoordinate } from "../shared";
+import type { Cell, GameState, PlayerId, Position } from "../types";
 import { CellCoordinate, CellCount } from "./CellLabels";
 
 type AtomRCellProps = {
@@ -316,10 +320,7 @@ export default function AtomRCell({
 				)}
 
 				{/* Coordinate label */}
-				<CellCoordinate
-					label={cellCoordinate}
-					visible={showCoordinates}
-				/>
+				<CellCoordinate label={cellCoordinate} visible={showCoordinates} />
 
 				{/* Hover glow overlay — legal, non-animating only */}
 				{canActivate && (
@@ -335,4 +336,3 @@ export default function AtomRCell({
 		</button>
 	);
 }
-
