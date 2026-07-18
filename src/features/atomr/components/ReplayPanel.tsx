@@ -150,6 +150,7 @@ export default function ReplayPanel({
 				return;
 			}
 			if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+				if (moveHistory.length === 0) return;
 				e.preventDefault();
 				setSelectedIndex((prev) => {
 					if (prev === null) return 0;
@@ -157,6 +158,7 @@ export default function ReplayPanel({
 				});
 			}
 			if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+				if (moveHistory.length === 0) return;
 				e.preventDefault();
 				setSelectedIndex((prev) => {
 					if (prev === null) return 0;
@@ -164,6 +166,7 @@ export default function ReplayPanel({
 				});
 			}
 			if (e.key.toLowerCase() === "b") {
+				if (e.ctrlKey || e.metaKey || e.altKey) return;
 				e.preventDefault();
 				setShowAfter((prev) => !prev);
 			}
@@ -198,6 +201,9 @@ export default function ReplayPanel({
 	return (
 		<div
 			className="fixed inset-0 z-50 flex flex-col"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Replay"
 			style={{
 				background: "rgba(7,7,11,0.96)",
 				backdropFilter: "blur(16px)",
@@ -242,7 +248,7 @@ export default function ReplayPanel({
 				<button
 					type="button"
 					onClick={onClose}
-					className="flex h-9 w-9 items-center justify-center rounded-full transition-all duration-150 hover:scale-[1.05] active:scale-[0.95]"
+					className="flex h-9 w-9 items-center justify-center rounded-full transition-all duration-150 hover:scale-[1.05] active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 					style={{
 						background: "rgba(255,255,255,0.04)",
 						color: "rgba(255,255,255,0.5)",
@@ -291,7 +297,7 @@ export default function ReplayPanel({
 									selectedIndex === 0 ||
 									moveHistory.length === 0
 								}
-								className="flex h-7 w-7 items-center justify-center rounded-md transition-all duration-100 hover:scale-[1.04] active:scale-[0.96] disabled:opacity-30 disabled:scale-100"
+								className="flex h-7 w-7 items-center justify-center rounded-md transition-all duration-100 hover:scale-[1.04] active:scale-[0.96] disabled:opacity-30 disabled:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: "rgba(255,255,255,0.04)",
 									color: "rgba(255,255,255,0.6)",
@@ -327,7 +333,7 @@ export default function ReplayPanel({
 									selectedIndex >= moveHistory.length - 1 ||
 									moveHistory.length === 0
 								}
-								className="flex h-7 w-7 items-center justify-center rounded-md transition-all duration-100 hover:scale-[1.04] active:scale-[0.96] disabled:opacity-30 disabled:scale-100"
+								className="flex h-7 w-7 items-center justify-center rounded-md transition-all duration-100 hover:scale-[1.04] active:scale-[0.96] disabled:opacity-30 disabled:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: "rgba(255,255,255,0.04)",
 									color: "rgba(255,255,255,0.6)",
@@ -352,7 +358,7 @@ export default function ReplayPanel({
 						</div>
 						<span
 							className="text-[10px] font-semibold uppercase tracking-[0.2em]"
-							style={{ color: "rgba(255,255,255,0.2)" }}
+							style={{ color: "rgba(255,255,255,0.55)" }}
 						>
 							{selectedIndex !== null ? selectedIndex + 1 : "–"} /{" "}
 							{moveHistory.length}
@@ -362,6 +368,7 @@ export default function ReplayPanel({
 					{/* Scrollable move list */}
 					<div
 						ref={listRef}
+						role="listbox"
 						className="flex-1 overflow-y-auto overflow-x-hidden"
 						style={{
 							scrollbarWidth: "thin",
@@ -390,7 +397,9 @@ export default function ReplayPanel({
 									type="button"
 									key={`move-${move.turnNumber}`}
 									onClick={() => setSelectedIndex(index)}
-									className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-all duration-100"
+									className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+									role="option"
+									aria-selected={isSelected}
 									style={{
 										background: isSelected
 											? `linear-gradient(90deg, ${color}14, ${color}08)`
@@ -437,7 +446,7 @@ export default function ReplayPanel({
 											style={{
 												color: isSelected
 													? `color-mix(in srgb, ${color} 60%, rgba(255,255,255,0.3))`
-													: "rgba(255,255,255,0.2)",
+													: "rgba(255,255,255,0.55)",
 												fontFamily: "monospace",
 											}}
 										>
@@ -463,12 +472,13 @@ export default function ReplayPanel({
 							<button
 								type="button"
 								onClick={() => setShowAfter(false)}
-								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap"
+								aria-pressed={!showAfter}
+								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: !showAfter
 										? `${activeColor}18`
 										: "rgba(255,255,255,0.02)",
-									color: !showAfter ? activeColor : "rgba(255,255,255,0.25)",
+									color: !showAfter ? activeColor : "rgba(255,255,255,0.55)",
 									border: !showAfter
 										? `1px solid ${activeColor}33`
 										: "1px solid rgba(255,255,255,0.06)",
@@ -479,12 +489,13 @@ export default function ReplayPanel({
 							<button
 								type="button"
 								onClick={() => setShowAfter(true)}
-								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap"
+								aria-pressed={showAfter}
+								className="rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 								style={{
 									background: showAfter
 										? `${activeColor}18`
 										: "rgba(255,255,255,0.02)",
-									color: showAfter ? activeColor : "rgba(255,255,255,0.25)",
+									color: showAfter ? activeColor : "rgba(255,255,255,0.55)",
 									border: showAfter
 										? `1px solid ${activeColor}33`
 										: "1px solid rgba(255,255,255,0.06)",
@@ -545,7 +556,7 @@ export default function ReplayPanel({
 						>
 							<span
 								className="text-[10px] uppercase tracking-[0.25em]"
-								style={{ color: "rgba(255,255,255,0.2)" }}
+								style={{ color: "rgba(255,255,255,0.55)" }}
 							>
 								Turn {selected.turnNumber}
 							</span>
