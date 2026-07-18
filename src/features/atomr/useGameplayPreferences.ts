@@ -40,10 +40,7 @@ export function useGameplayPreferences() {
 
 	useEffect(() => {
 		try {
-			window.localStorage.setItem(
-				STORAGE_KEY,
-				JSON.stringify(preferences),
-			);
+			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
 		} catch {
 			// Preference persistence should not block gameplay.
 		}

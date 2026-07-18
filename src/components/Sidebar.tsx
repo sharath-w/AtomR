@@ -35,9 +35,7 @@ export default function TopBar() {
 				{/* Nav links — hidden on mobile */}
 				<nav className="flex flex-1 items-center justify-center gap-1 max-[640px]:hidden">
 					{NAV_ITEMS.map(({ to, label, exact }) => {
-						const isActive = exact
-							? pathname === to
-							: pathname.startsWith(to);
+						const isActive = exact ? pathname === to : pathname.startsWith(to);
 						return (
 							<Link
 								key={to}

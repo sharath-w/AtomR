@@ -6,8 +6,8 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
-import ReplayPanel from "./ReplayPanel";
 import OnboardingOverlay from "./OnboardingOverlay";
+import ReplayPanel from "./ReplayPanel";
 
 export default function LocalPlayScreen() {
 	const [rows, setRows] = useState(6);

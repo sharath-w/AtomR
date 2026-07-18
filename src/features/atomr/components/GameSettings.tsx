@@ -42,7 +42,9 @@ export default function GameSettings({
 	const [localCols, setLocalCols] = useState(cols);
 	const [localPlayerCount, setLocalPlayerCount] = useState(playerCount ?? 2);
 	const [localDifficulty, setLocalDifficulty] = useState(difficulty ?? 5);
-	const [presets, setPresets] = useState<BoardPreset[]>(() => getBoardPresets());
+	const [presets, setPresets] = useState<BoardPreset[]>(() =>
+		getBoardPresets(),
+	);
 
 	// Sync local state when modal opens
 	useEffect(() => {
