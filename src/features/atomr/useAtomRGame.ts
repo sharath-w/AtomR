@@ -304,14 +304,23 @@ export function useAtomRGame(
 	const animationCycleRef = useRef(0);
 	const isAnimatingRef = useRef(false);
 	const didMountRef = useRef(false);
+	// Refs mirror state read inside memoized handlers so the callbacks stay
+	// stable across renders. Without this, handleMove/undo/reset would get a
+	// fresh identity every render, churning the CPU think effect in
+	// AiPlayScreen / AiBattleScreen (clearing/rescheduling the think timer and
+	// starving the CPU under ResizeObserver or animation re-renders).
+	const resolvedStateRef = useRef(resolvedState);
+	resolvedStateRef.current = resolvedState;
+	const lastMoveRef = useRef(lastMove);
+	lastMoveRef.current = lastMove;
 
 	const isAnimating = resolvedState.phase === "resolving";
 
-	function clearPlaybackTimers() {
+	const clearPlaybackTimers = useCallback(() => {
 		for (const timer of timersRef.current) window.clearTimeout(timer);
 		timersRef.current = [];
 		isAnimatingRef.current = false;
-	}
+	}, []);
 
 	const clearHistory = useCallback(() => {
 		historyRef.current = [];
@@ -348,140 +357,149 @@ export function useAtomRGame(
 		clearHistory();
 	}, [rows, cols, playerCount, resetToken, clearHistory]);
 
-	function finishPlayback(nextState: GameState) {
+	const finishPlayback = useCallback((nextState: GameState) => {
 		isAnimatingRef.current = false;
 		setDisplayedState(nextState);
 		setResolvedState(nextState);
 		setActiveExplosionKeys([]);
 		setActiveCaptureKeys([]);
 		setActiveExplosions([]);
-	}
+	}, []);
 
-	function playEvents(
-		events: ResolutionEvent[],
-		nextState: GameState,
-		initialBoard: Board,
-	) {
-		clearPlaybackTimers();
-		isAnimatingRef.current = true;
-
-		setResolvedState({ ...nextState, phase: "resolving" });
-		setDisplayedState((s) => ({ ...s, phase: "resolving" }));
-
-		if (events.length === 0) {
-			const t = window.setTimeout(() => finishPlayback(nextState), 120);
-			timersRef.current.push(t);
-			return;
-		}
-
-		let steps: PlaybackStep[];
-		try {
-			steps = buildPlaybackSteps(
-				events,
-				initialBoard,
-				nextState.rows,
-				nextState.cols,
-			);
-		} catch {
-			const fallbackTimer = window.setTimeout(
-				() => finishPlayback(nextState),
-				0,
-			);
-			timersRef.current.push(fallbackTimer);
-			return;
-		}
-
-		let elapsedMs = 0;
-		for (const step of steps) {
-			const timer = window.setTimeout(() => {
-				const animKey = ++animationCycleRef.current;
-				setDisplayedState((s) => ({ ...s, board: step.board }));
-				setActiveExplosionKeys(step.explosionKeys);
-				setActiveCaptureKeys(step.captureKeys);
-				setActiveExplosions(
-					step.explosions.map((explosion) => ({ ...explosion, animKey })),
-				);
-			}, elapsedMs);
-			timersRef.current.push(timer);
-			elapsedMs += step.durationMs;
-		}
-
-		const finalizeTimer = window.setTimeout(
-			() => finishPlayback(nextState),
-			elapsedMs + 60,
-		);
-		timersRef.current.push(finalizeTimer);
-	}
-
-	function handleMove({ row, col }: Coordinates) {
-		const baseState = settleState(resolvedState);
-		if (!isLegalMove(baseState, row, col)) return;
-
-		if (isAnimatingRef.current) {
+	const playEvents = useCallback(
+		(
+			events: ResolutionEvent[],
+			nextState: GameState,
+			initialBoard: Board,
+		) => {
 			clearPlaybackTimers();
-			setDisplayedState(baseState);
+			isAnimatingRef.current = true;
+
+			setResolvedState({ ...nextState, phase: "resolving" });
+			setDisplayedState((s) => ({ ...s, phase: "resolving" }));
+
+			if (events.length === 0) {
+				const t = window.setTimeout(() => finishPlayback(nextState), 120);
+				timersRef.current.push(t);
+				return;
+			}
+
+			let steps: PlaybackStep[];
+			try {
+				steps = buildPlaybackSteps(
+					events,
+					initialBoard,
+					nextState.rows,
+					nextState.cols,
+				);
+			} catch {
+				const fallbackTimer = window.setTimeout(
+					() => finishPlayback(nextState),
+					0,
+				);
+				timersRef.current.push(fallbackTimer);
+				return;
+			}
+
+			let elapsedMs = 0;
+			for (const step of steps) {
+				const timer = window.setTimeout(() => {
+					const animKey = ++animationCycleRef.current;
+					setDisplayedState((s) => ({ ...s, board: step.board }));
+					setActiveExplosionKeys(step.explosionKeys);
+					setActiveCaptureKeys(step.captureKeys);
+					setActiveExplosions(
+						step.explosions.map((explosion) => ({ ...explosion, animKey })),
+					);
+				}, elapsedMs);
+				timersRef.current.push(timer);
+				elapsedMs += step.durationMs;
+			}
+
+			const finalizeTimer = window.setTimeout(
+				() => finishPlayback(nextState),
+				elapsedMs + 60,
+			);
+			timersRef.current.push(finalizeTimer);
+		},
+		[clearPlaybackTimers, finishPlayback],
+	);
+
+	const handleMove = useCallback(
+		({ row, col }: Coordinates) => {
+			const baseState = settleState(resolvedStateRef.current);
+			if (!isLegalMove(baseState, row, col)) return;
+
+			if (isAnimatingRef.current) {
+				clearPlaybackTimers();
+				setDisplayedState(baseState);
+				setActiveExplosionKeys([]);
+				setActiveCaptureKeys([]);
+				setActiveExplosions([]);
+			}
+
+			const boardBefore = cloneBoard(baseState.board);
+			const result = applyMove(baseState, row, col);
+			const currentPlayer = baseState.currentPlayer;
+			const turnNum = baseState.turnNumber + 1;
+			setLastMove({
+				row,
+				col,
+				player: currentPlayer,
+				turnNumber: turnNum,
+				didExplode: result.events.some((event) => event.type === "explode"),
+			});
+			setMoveHistory((prev) => [
+				...prev,
+				{
+					turnNumber: turnNum,
+					player: currentPlayer,
+					row,
+					col,
+					coordinate: formatBoardCoordinate(row, col),
+					boardBefore,
+					boardAfter: cloneBoard(result.state.board),
+				},
+			]);
+			if (enableHistory) {
+				historyRef.current = [
+					...historyRef.current,
+					{
+						state: baseState,
+						lastMove: lastMoveRef.current,
+					},
+				];
+				setCanUndo(true);
+			}
+			playEvents(result.events, result.state, baseState.board);
+		},
+		[enableHistory, clearPlaybackTimers, playEvents],
+	);
+
+	const undo = useCallback(
+		(moveCount = 1) => {
+			if (!enableHistory || moveCount < 1) return 0;
+			const steps = Math.min(moveCount, historyRef.current.length);
+			if (steps === 0) return 0;
+
+			clearPlaybackTimers();
+			const snapshot = historyRef.current.at(-steps);
+			if (!snapshot) return 0;
+
+			historyRef.current = historyRef.current.slice(0, -steps);
+			setCanUndo(historyRef.current.length > 0);
+			setResolvedState(snapshot.state);
+			setDisplayedState(snapshot.state);
 			setActiveExplosionKeys([]);
 			setActiveCaptureKeys([]);
 			setActiveExplosions([]);
-		}
+			setLastMove(snapshot.lastMove);
+			return steps;
+		},
+		[enableHistory, clearPlaybackTimers],
+	);
 
-		const boardBefore = cloneBoard(baseState.board);
-		const result = applyMove(baseState, row, col);
-		const currentPlayer = baseState.currentPlayer;
-		const turnNum = baseState.turnNumber + 1;
-		setLastMove({
-			row,
-			col,
-			player: currentPlayer,
-			turnNumber: turnNum,
-			didExplode: result.events.some((event) => event.type === "explode"),
-		});
-		setMoveHistory((prev) => [
-			...prev,
-			{
-				turnNumber: turnNum,
-				player: currentPlayer,
-				row,
-				col,
-				coordinate: formatBoardCoordinate(row, col),
-				boardBefore,
-				boardAfter: cloneBoard(result.state.board),
-			},
-		]);
-		if (enableHistory) {
-			historyRef.current = [
-				...historyRef.current,
-				{
-					state: baseState,
-					lastMove,
-				},
-			];
-			setCanUndo(true);
-		}
-		playEvents(result.events, result.state, baseState.board);
-	}
-
-	function undo(moveCount = 1) {
-		if (!enableHistory || moveCount < 1) return 0;
-		const steps = Math.min(moveCount, historyRef.current.length);
-		if (steps === 0) return 0;
-
-		clearPlaybackTimers();
-		const snapshot = historyRef.current.at(-steps);
-		if (!snapshot) return 0;
-
-		historyRef.current = historyRef.current.slice(0, -steps);
-		setCanUndo(historyRef.current.length > 0);
-		setResolvedState(snapshot.state);
-		setDisplayedState(snapshot.state);
-		setActiveExplosionKeys([]);
-		setActiveCaptureKeys([]);
-		setActiveExplosions([]);
-		setLastMove(snapshot.lastMove);
-		return steps;
-	}
-
-	function reset() {
+	const reset = useCallback(() => {
 		clearPlaybackTimers();
 		const initialState = createInitialGameState(rows, cols, playerCount);
 		setResolvedState(initialState);
@@ -492,7 +510,7 @@ export function useAtomRGame(
 		setLastMove(null);
 		setMoveHistory([]);
 		clearHistory();
-	}
+	}, [rows, cols, playerCount, clearPlaybackTimers, clearHistory]);
 
 	return {
 		state: displayedState,
