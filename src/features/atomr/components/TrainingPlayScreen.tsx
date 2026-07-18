@@ -102,7 +102,11 @@ export default function TrainingPlayScreen() {
 		? { width: `${boardDims.w}px`, maxWidth: "100%" }
 		: { width: "100%", maxWidth: "100%" };
 	const boardKeyboardEnabled =
-		!settingsOpen && !replayOpen && !state.winner && !state.isDraw;
+		!settingsOpen &&
+		!replayOpen &&
+		!rulesOpen &&
+		!state.winner &&
+		!state.isDraw;
 
 	useEffect(() => {
 		if (suggestionTimerRef.current !== null) {

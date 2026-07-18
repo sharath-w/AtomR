@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PLAYER_COLORS } from "../constants";
 
 const STORAGE_KEY = "atomr:onboarded";
+
+const FOCUSABLE_SELECTOR =
+	'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function hasOnboarded(): boolean {
 	if (typeof window === "undefined") return false;
@@ -125,6 +128,8 @@ export default function OnboardingOverlay({
 }: OnboardingOverlayProps) {
 	const [open, setOpen] = useState(false);
 	const [step, setStep] = useState(0);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<Element | null>(null);
 
 	useEffect(() => {
 		if (forceOpen) {
@@ -132,6 +137,8 @@ export default function OnboardingOverlay({
 			setStep(0);
 			return;
 		}
+		// forceOpen flipped false (e.g. trigger tapped again): dismiss the overlay.
+		setOpen(false);
 		if (hasOnboarded()) return;
 		// Show after a brief delay so the board settles.
 		const id = window.setTimeout(() => setOpen(true), 600);
@@ -146,12 +153,62 @@ export default function OnboardingOverlay({
 
 	useEffect(() => {
 		if (!open) return;
+		// Remember what had focus before the overlay opened so we can restore it.
+		triggerRef.current = document.activeElement;
+		// Move focus into the dialog: first focusable element, else the panel itself.
+		const panel = panelRef.current;
+		if (panel) {
+			const first = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+			(first ?? panel).focus();
+		}
+
 		function handleKeyDown(e: KeyboardEvent) {
-			if (e.key === "Escape") handleClose();
+			if (e.key === "Escape") {
+				handleClose();
+				return;
+			}
+			if (e.key !== "Tab") return;
+			const panel = panelRef.current;
+			if (!panel) return;
+			const focusables = Array.from(
+				panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+			).filter((el) => !el.hasAttribute("disabled"));
+			const active = document.activeElement as HTMLElement | null;
+			if (focusables.length === 0) {
+				e.preventDefault();
+				panel.focus();
+				return;
+			}
+			const first = focusables[0];
+			const last = focusables[focusables.length - 1];
+			if (e.shiftKey) {
+				if (active === first || !panel.contains(active)) {
+					e.preventDefault();
+					last.focus();
+				}
+			} else {
+				if (active === last || !panel.contains(active)) {
+					e.preventDefault();
+					first.focus();
+				}
+			}
 		}
 		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [open, handleClose]);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+			// Restore focus to the element that opened the overlay.
+			if (triggerRef.current instanceof HTMLElement) {
+				triggerRef.current.focus();
+			}
+			triggerRef.current = null;
+		};
+	}, [open]);
+
+	function handleClose() {
+		markOnboarded();
+		setOpen(false);
+		onClose();
+	}
 
 	if (!open) return null;
 
@@ -178,11 +235,14 @@ export default function OnboardingOverlay({
 				className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
 			>
 				<div
+					ref={panelRef}
+					tabIndex={-1}
 					className="relative mx-4 w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5 pointer-events-auto"
 					style={{
 						background: "#0d0d1a",
 						border: "1px solid rgba(255,255,255,0.07)",
 						boxShadow: "0 32px 80px rgba(0,0,0,0.75)",
+						outline: "none",
 					}}
 				>
 					<div className="flex items-center justify-between">
