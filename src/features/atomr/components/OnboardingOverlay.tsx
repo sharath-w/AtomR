@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PLAYER_COLORS } from "../constants";
 
 const STORAGE_KEY = "atomr:onboarded";
@@ -138,6 +138,12 @@ export default function OnboardingOverlay({
 		return () => window.clearTimeout(id);
 	}, [forceOpen]);
 
+	const handleClose = useCallback(() => {
+		markOnboarded();
+		setOpen(false);
+		onClose();
+	}, [onClose]);
+
 	useEffect(() => {
 		if (!open) return;
 		function handleKeyDown(e: KeyboardEvent) {
@@ -145,13 +151,7 @@ export default function OnboardingOverlay({
 		}
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [open]);
-
-	function handleClose() {
-		markOnboarded();
-		setOpen(false);
-		onClose();
-	}
+	}, [open, handleClose]);
 
 	if (!open) return null;
 
