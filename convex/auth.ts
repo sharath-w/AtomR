@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { createClient } from '@convex-dev/better-auth'
 import { convex } from '@convex-dev/better-auth/plugins'
 import { betterAuth } from 'better-auth/minimal'
