@@ -307,19 +307,23 @@ function PlayPage() {
 					</p>
 				</div>
 
-				{/* Primary + secondary row */}
+				{/* Primary row: vs CPU + Online */}
 				<section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					<PrimaryCard mode={LOCAL} />
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<PrimaryCard mode={VS_CPU} />
+					<div className="h-full">
 						<ModeCard mode={ONLINE} />
-						<ModeCard mode={VS_CPU} />
 					</div>
 				</section>
 
-				{/* Tertiary row */}
+				{/* Secondary row: Training + AI Battle */}
 				<section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<ModeCard mode={TRAINING} />
 					<ModeCard mode={AI_BATTLE} />
+				</section>
+
+				{/* Last: Local */}
+				<section className="grid grid-cols-1 gap-4">
+					<ModeCard mode={LOCAL} />
 				</section>
 			</div>
 		</main>
