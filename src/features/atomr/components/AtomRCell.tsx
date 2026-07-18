@@ -91,8 +91,8 @@ function OrbDisplay({
 								width: count >= 4 ? "25%" : "30%",
 								aspectRatio: "1 / 1",
 								boxShadow: isCritical
-									? `0 0 8px ${color}cc, 0 0 20px ${color}88`
-									: `0 0 5px ${color}bb, 0 0 12px ${color}66`,
+									? `0 0 8px color-mix(in srgb, ${color} 80%, transparent), 0 0 20px color-mix(in srgb, ${color} 53%, transparent)`
+									: `0 0 5px color-mix(in srgb, ${color} 73%, transparent), 0 0 12px color-mix(in srgb, ${color} 40%, transparent)`,
 								animation,
 								willChange: "transform, opacity",
 							} as React.CSSProperties
@@ -212,13 +212,13 @@ export default function AtomRCell({
 					].join(" ")}
 					style={
 						{
-							"--cr-critical-shadow-lo": `inset 0 0 0 1px ${ownerColor ?? "transparent"}, 0 0 8px ${ownerColor ?? "transparent"}66`,
-							"--cr-critical-shadow-hi": `inset 0 0 0 2px ${ownerColor ?? "transparent"}, 0 0 22px ${ownerColor ?? "transparent"}aa`,
+							"--cr-critical-shadow-lo": `inset 0 0 0 1px ${ownerColor ?? "transparent"}, 0 0 8px color-mix(in srgb, ${ownerColor ?? "transparent"} 40%, transparent)`,
+							"--cr-critical-shadow-hi": `inset 0 0 0 2px ${ownerColor ?? "transparent"}, 0 0 22px color-mix(in srgb, ${ownerColor ?? "transparent"} 67%, transparent)`,
 							boxShadow:
 								critical && ownerColor
-									? `inset 0 0 0 1px ${ownerColor}, 0 0 10px ${ownerColor}77`
+									? `inset 0 0 0 1px ${ownerColor}, 0 0 10px color-mix(in srgb, ${ownerColor} 47%, transparent)`
 									: isCapturing
-										? `inset 0 0 0 1px ${activeColor}88`
+										? `inset 0 0 0 1px color-mix(in srgb, ${activeColor} 53%, transparent)`
 										: "none",
 						} as React.CSSProperties
 					}
@@ -268,8 +268,8 @@ export default function AtomRCell({
 					<span
 						className="absolute inset-[6px] rounded-[4px] border border-dashed pointer-events-none"
 						style={{
-							borderColor: `${suggestionColor}99`,
-							boxShadow: `0 0 0 1px ${suggestionColor}22, inset 0 0 14px ${suggestionColor}12`,
+							borderColor: `color-mix(in srgb, ${suggestionColor} 60%, transparent)`,
+							boxShadow: `0 0 0 1px color-mix(in srgb, ${suggestionColor} 13%, transparent), inset 0 0 14px color-mix(in srgb, ${suggestionColor} 7%, transparent)`,
 						}}
 					/>
 				)}
@@ -278,8 +278,8 @@ export default function AtomRCell({
 					<span
 						className="absolute inset-[8px] rounded-[4px] pointer-events-none"
 						style={{
-							boxShadow: `inset 0 0 0 2px ${queuedColor}cc, 0 0 0 1px ${queuedColor}33`,
-							outline: `1px dashed ${queuedColor}aa`,
+							boxShadow: `inset 0 0 0 2px color-mix(in srgb, ${queuedColor} 80%, transparent), 0 0 0 1px color-mix(in srgb, ${queuedColor} 20%, transparent)`,
+							outline: `1px dashed color-mix(in srgb, ${queuedColor} 67%, transparent)`,
 							outlineOffset: "-3px",
 						}}
 					/>
@@ -298,7 +298,7 @@ export default function AtomRCell({
 					<span
 						className="cr-capture-ripple absolute inset-[3px] rounded-[1px] pointer-events-none"
 						style={{
-							border: `1.5px solid ${ownerColor}cc`,
+							border: `1.5px solid color-mix(in srgb, ${ownerColor} 80%, transparent)`,
 							backgroundColor: "transparent",
 						}}
 					/>
@@ -315,9 +315,7 @@ export default function AtomRCell({
 				)}
 
 				{/* Count / capacity label */}
-				{cell.count > 0 && (
-					<CellCount count={cell.count} capacity={capacity} dimmed={false} />
-				)}
+				{cell.count > 0 && <CellCount count={cell.count} capacity={capacity} />}
 
 				{/* Coordinate label */}
 				<CellCoordinate label={cellCoordinate} visible={showCoordinates} />
@@ -327,8 +325,8 @@ export default function AtomRCell({
 					<span
 						className="absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 pointer-events-none"
 						style={{
-							backgroundColor: `${activeColor}1a`,
-							boxShadow: `inset 0 0 0 1px ${activeColor}55`,
+							backgroundColor: `color-mix(in srgb, ${activeColor} 10%, transparent)`,
+							boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${activeColor} 33%, transparent)`,
 						}}
 					/>
 				)}

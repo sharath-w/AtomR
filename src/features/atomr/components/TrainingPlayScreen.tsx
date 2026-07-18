@@ -102,7 +102,11 @@ export default function TrainingPlayScreen() {
 		? { width: `${boardDims.w}px`, maxWidth: "100%" }
 		: { width: "100%", maxWidth: "100%" };
 	const boardKeyboardEnabled =
-		!settingsOpen && !replayOpen && !state.winner && !state.isDraw;
+		!settingsOpen &&
+		!replayOpen &&
+		!rulesOpen &&
+		!state.winner &&
+		!state.isDraw;
 
 	useEffect(() => {
 		if (suggestionTimerRef.current !== null) {
@@ -170,14 +174,14 @@ export default function TrainingPlayScreen() {
 			<div
 				className="pointer-events-none fixed inset-x-0 top-0 h-[50%]"
 				style={{
-					background: `radial-gradient(ellipse 80% 55% at 50% -5%, ${activeColor}14 0%, transparent 65%)`,
+					background: `radial-gradient(ellipse 80% 55% at 50% -5%, color-mix(in srgb, ${activeColor} 8%, transparent) 0%, transparent 65%)`,
 					transition: "background 1.2s ease",
 				}}
 			/>
 			<div
 				className="pointer-events-none fixed inset-x-0 bottom-0 h-[30%]"
 				style={{
-					background: `radial-gradient(ellipse 60% 40% at 50% 110%, ${activeColor}08 0%, transparent 70%)`,
+					background: `radial-gradient(ellipse 60% 40% at 50% 110%, color-mix(in srgb, ${activeColor} 3%, transparent) 0%, transparent 70%)`,
 					transition: "background 1.2s ease",
 				}}
 			/>

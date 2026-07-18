@@ -32,7 +32,7 @@ export default function PlayerBadge({
 					? "transparent"
 					: `color-mix(in srgb, ${color} 18%, transparent)`,
 				color: color,
-				boxShadow: `inset 0 0 0 1px ${color}${outlined ? "aa" : "55"}, 0 0 8px ${color}33`,
+				boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} ${outlined ? 67 : 33}%, transparent), 0 0 8px color-mix(in srgb, ${color} 20%, transparent)`,
 				opacity: dimmed ? 0.35 : 1,
 				transition: "opacity 0.18s ease",
 			}}
