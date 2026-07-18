@@ -77,11 +77,7 @@ function RootLayout() {
 	return (
 		<>
 			{!isNoChrome ? <Sidebar /> : null}
-			<div
-				className={
-					!isNoChrome ? "min-w-0 pt-14" : undefined
-				}
-			>
+			<div className={!isNoChrome ? "min-w-0 pt-14" : undefined}>
 				<Outlet />
 			</div>
 			{!isNoChrome && AppDevtools ? (

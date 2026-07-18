@@ -379,7 +379,7 @@ export default function ReplayPanel({
 							<div
 								className="px-4 py-8 text-center"
 								style={{
-								color: "rgba(255,255,255,0.5)",
+									color: "rgba(255,255,255,0.5)",
 									fontSize: "12px",
 								}}
 							>
@@ -522,7 +522,7 @@ export default function ReplayPanel({
 						) : (
 							<div
 								className="flex flex-col items-center gap-3"
-							style={{ color: "rgba(255,255,255,0.42)" }}
+								style={{ color: "rgba(255,255,255,0.42)" }}
 							>
 								<svg
 									aria-hidden="true"
