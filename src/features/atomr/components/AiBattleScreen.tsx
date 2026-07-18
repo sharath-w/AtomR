@@ -22,8 +22,8 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
-import ReplayPanel from "./ReplayPanel";
 import OnboardingOverlay from "./OnboardingOverlay";
+import ReplayPanel from "./ReplayPanel";
 
 function getAiNames(playerCount: number): Partial<Record<PlayerId, string>> {
 	return Object.fromEntries(

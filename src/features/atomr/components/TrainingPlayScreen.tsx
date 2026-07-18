@@ -17,8 +17,8 @@ import AtomRBoard from "./AtomRBoard";
 import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
-import ReplayPanel from "./ReplayPanel";
 import OnboardingOverlay from "./OnboardingOverlay";
+import ReplayPanel from "./ReplayPanel";
 
 const TRAINING_DIFFICULTY = 10;
 

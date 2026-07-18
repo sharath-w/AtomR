@@ -9,7 +9,7 @@ import {
 import { countPlayerOrbsInState } from "../selectors";
 import { ONLINE_TURN_TIME_LIMIT_MS } from "../shared";
 import type { GameState, PlayerId } from "../types";
-import { vibrationPatterns, vibrate } from "../utils/vibration";
+import { vibrate, vibrationPatterns } from "../utils/vibration";
 import PlayerBadge from "./PlayerBadge";
 
 const HUD_BUTTON_CLASS_NAME =
@@ -142,7 +142,7 @@ function PlayerChipsStrip({
 							background: isCurrent
 								? `color-mix(in srgb, ${color} 14%, transparent)`
 								: "rgba(255,255,255,0.02)",
-							boxShadow: `inset 0 0 0 1px ${isCurrent ? color + "66" : "rgba(255,255,255,0.04)"}`,
+							boxShadow: `inset 0 0 0 1px ${isCurrent ? `color-mix(in srgb, ${color} 40%, transparent)` : "rgba(255,255,255,0.04)"}`,
 							opacity: eliminated ? 0.35 : 1,
 							transition: "opacity 0.2s ease",
 						}}
