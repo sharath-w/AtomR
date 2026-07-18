@@ -23,7 +23,7 @@ function renderBoard({
 	keyboardNavigationEnabled?: boolean;
 	canPlay?: boolean;
 	isAnimating?: boolean;
-	onPlay?: ReturnType<typeof vi.fn>;
+	onPlay?: (row: number, col: number) => void;
 } = {}) {
 	render(
 		<AtomRBoard
