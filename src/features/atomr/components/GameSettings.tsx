@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-	type BoardPreset,
-	getBoardPresets,
-} from "#/features/atomr/utils/recommendedSize";
+import { getBoardPresets } from "#/features/atomr/utils/recommendedSize";
 
 type GameSettingsProps = {
 	open: boolean;
@@ -42,9 +39,6 @@ export default function GameSettings({
 	const [localCols, setLocalCols] = useState(cols);
 	const [localPlayerCount, setLocalPlayerCount] = useState(playerCount ?? 2);
 	const [localDifficulty, setLocalDifficulty] = useState(difficulty ?? 5);
-	const [presets, setPresets] = useState<BoardPreset[]>(() =>
-		getBoardPresets(),
-	);
 
 	// Sync local state when modal opens
 	useEffect(() => {
@@ -53,7 +47,6 @@ export default function GameSettings({
 			setLocalCols(cols);
 			setLocalPlayerCount(playerCount ?? 2);
 			setLocalDifficulty(difficulty ?? 5);
-			setPresets(getBoardPresets());
 		}
 	}, [open, rows, cols, playerCount, difficulty]);
 
@@ -86,6 +79,8 @@ export default function GameSettings({
 
 	const sliderStyle = (thumbColor: string): React.CSSProperties =>
 		({ "--thumb-color": thumbColor, height: "4px" }) as React.CSSProperties;
+
+	const presets = getBoardPresets();
 
 	const activePresetId = presets.find(
 		(p) => p.rows === localRows && p.cols === localCols,
@@ -198,7 +193,7 @@ export default function GameSettings({
 						<input
 							type="range"
 							min={3}
-							max={12}
+							max={16}
 							value={localRows}
 							onChange={(e) => setLocalRows(Number(e.target.value))}
 							className="settings-slider w-full cursor-pointer appearance-none rounded-full"
@@ -213,7 +208,7 @@ export default function GameSettings({
 							}}
 						>
 							<span>3</span>
-							<span>12</span>
+							<span>16</span>
 						</div>
 					</div>
 
