@@ -18,6 +18,7 @@ import {
 } from '../src/features/atomr/premoves'
 import {
 	ONLINE_TURN_TIME_LIMIT_MS,
+	ONLINE_PRESENCE_WINDOW_MS,
 	createPlayerFlags,
 	type GameState,
 	type PlayerId,
@@ -955,5 +956,48 @@ export const resignMatch = mutation({
 		})
 
 		return { winner }
+	},
+})
+
+const ONLINE_COUNT_CAP = 512
+const SITE_STATS_KEY = 'onlineCount'
+
+/** Cron target: count users active in the presence window, write to singleton. */
+export const refreshOnlineCount = internalMutation({
+	args: {},
+	handler: async (ctx) => {
+		const now = Date.now()
+		const cutoff = now - ONLINE_PRESENCE_WINDOW_MS
+		const recent = await ctx.db
+			.query('users')
+			.withIndex('by_last_seen_at', (q: any) => q.gte('lastSeenAt', cutoff))
+			.take(ONLINE_COUNT_CAP)
+		const count = recent.length
+
+		const existing = await ctx.db
+			.query('siteStats')
+			.withIndex('by_key', (q: any) => q.eq('key', SITE_STATS_KEY))
+			.unique()
+		if (existing) {
+			await ctx.db.patch(existing._id, { onlineCount: count, updatedAt: now })
+		} else {
+			await ctx.db.insert('siteStats', {
+				key: SITE_STATS_KEY,
+				onlineCount: count,
+				updatedAt: now,
+			})
+		}
+	},
+})
+
+/** Client read: returns the cached online count from the singleton. */
+export const getOnlineCount = query({
+	args: {},
+	handler: async (ctx) => {
+		const stat = await ctx.db
+			.query('siteStats')
+			.withIndex('by_key', (q: any) => q.eq('key', SITE_STATS_KEY))
+			.unique()
+		return stat ? { onlineCount: stat.onlineCount, updatedAt: stat.updatedAt } : { onlineCount: 0, updatedAt: 0 }
 	},
 })

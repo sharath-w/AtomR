@@ -79,8 +79,9 @@ export const DEFAULT_COLS = 9;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = PLAYER_ORDER.length;
 export const ONLINE_TURN_TIME_LIMIT_MS = 30_000;
-export const ONLINE_VIEWER_HEARTBEAT_MS = 15_000;
-export const ONLINE_QUEUE_STALE_MS = 60_000;
+export const ONLINE_VIEWER_HEARTBEAT_MS = 30_000;
+export const ONLINE_QUEUE_STALE_MS = 90_000;
+export const ONLINE_PRESENCE_WINDOW_MS = 90_000;
 
 export function clampPlayerCount(playerCount: number) {
 	return Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Math.floor(playerCount)));

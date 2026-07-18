@@ -40,7 +40,14 @@ export default defineSchema({
 		avatarUrl: v.optional(v.string()),
 		createdAt: v.number(),
 		lastSeenAt: v.number(),
-	}).index('by_auth_user_id', ['authUserId']),
+	})
+		.index('by_auth_user_id', ['authUserId'])
+		.index('by_last_seen_at', ['lastSeenAt']),
+	siteStats: defineTable({
+		key: v.string(),
+		onlineCount: v.number(),
+		updatedAt: v.number(),
+	}).index('by_key', ['key']),
 	matchmakingQueue: defineTable({
 		userId: v.id('users'),
 		status: v.union(
