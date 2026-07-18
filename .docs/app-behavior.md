@@ -1,6 +1,6 @@
 # AtomR — App Behavior
 
-What the app actually is and does today. Source of truth before any UI rethink.
+What the app actually is and does today. Source of truth for current state and remaining gaps.
 
 ## Product
 
@@ -23,8 +23,8 @@ Last player with orbs on the board wins.
 
 | Path | Purpose |
 |---|---|
-| `/` | Landing. Hero "Turn-based cascading play." + PLAY / LIVE MATCH CTAs. Auto-redirects to active match if one exists. |
-| `/play` | Mode picker. 5 cards: Local, Online, Training, AI Game, AI Battle. |
+| `/` | Landing. Hero "Turn-based cascading play." + live demo board (real engine auto-playing a 4×3 / 3×4 cascade loop) + PLAY / LIVE MATCH CTAs. Auto-redirects to active match if one exists. |
+| `/play` | Mode picker. Hierarchical cards: LOCAL primary (largest), Online + vs CPU secondary, Training + AI Battle tertiary. |
 | `/play/local` | Hot-seat. 2–8 players share device. |
 | `/play/online` | Lobby. Public queue + private room by code. Requires auth. |
 | `/play/match/$matchId` | Live online match. |
@@ -68,56 +68,69 @@ Returns:
 
 ## Board Sizing
 
-`getRecommendedSize()` (`utils/recommendedSize.ts`):
-- Reads `window.innerWidth - 24`, `window.innerHeight - 160`
-- Cell target clamped `50–90px`
-- Output: cols `4–16`, rows `3–12`
-- On a typical desktop viewport → **16 cols × 8 rows** (way bigger than classic 9×6)
-- Called once on mount in `LocalPlayScreen` / `AiPlayScreen`; user can override via Board settings modal
+`getRecommendedSize()` (`utils/recommendedSize.ts`) is **preset-based**, not viewport-fill:
+- Landscape presets: `9×6` classic · `12×8` · `14×10` · `16×10` max
+- Portrait presets (transposed): `6×9` · `8×12` · `10×14` · `10×16` max
+- Picks the largest preset that fits at **≥56px cells** in the current orientation, else falls back to the classic 9×6 / 6×9.
+- Called once on mount in `LocalPlayScreen` / `AiPlayScreen` / `AiBattleScreen` / `TrainingPlayScreen` / `match.$matchId`.
 
-**Problem**: default desktop board is far larger than the canonical game. Cells get tiny, board fills the whole screen, tactical density drops.
+This kills the old "16×8 on every desktop with 50px cells" problem. The board is now capped at canonical sizes with a guaranteed minimum cell size. User can still override via the Board settings modal, which surfaces the same presets.
 
 ## Visual Language (current)
 
-- Background: `#07070b` near-black
-- Cell face: `#141427` dark indigo
-- Owned cell tint: `color-mix(in srgb, ownerColor 10%, #141427)`
-- Player colors (OKLCH):
-  - p1 red-orange `oklch(0.68 0.24 35)`
-  - p2 blue `oklch(0.73 0.17 250)`
-  - p3 green, p4 magenta, p5 lime, p6 purple, p7 red, p8 near-white
-- Orbs: absolutely-positioned spans, 30% width, `aspectRatio 1/1`, glow via `boxShadow`
+- Background: `oklch(0.05 0.005 265)` near-black (from `--background` token)
+- Cell face: `#0c0d14` / `#11121a` dark indigo
+- Owned cell tint: `color-mix(in srgb, ownerColor 10%, #11121a)`
+- Legal empty cell: `color-mix(in srgb, #78d28a 6%, #0c0d14)` + inset `rgba(120,210,138,0.22)` ring — **always visible, not hover-only**
+- Player colors (OKLCH), with `PlayerBadge` rendering `P1`/`P2`/… alongside color so color is never the sole signal:
+  - p1 cyan `oklch(0.72 0.19 195)`
+  - p2 red-orange `oklch(0.72 0.19 23)`
+  - p3 green, p4 magenta, p5 yellow-green, p6 purple, p7 red, p8 near-white
+- Orbs: plasma radial gradient (`.cr-orb-plasma`) — hot white core → owner color → deeper edge, with `boxShadow` glow
 - Orb arrangements: 1 center · 2 side-by-side · 3 triangle · 4 corners
-- Critical cells: pulsing ring (`cr-critical-pulse` 0.75s)
-- Explosion: `cr-orb-burst` scale-up + blur
+- **CellCount** (`CellLabels.tsx`): bottom-right `count/capacity` label (e.g. `2/3`) in JetBrains Mono, always visible when `count > 0`
+- **CellCoordinate** (`CellLabels.tsx`): top-left `A1`-style label in JetBrains Mono, faint, visibility toggled by caller
+- Critical cells: pulsing inner ring (`cr-critical-pulse` 0.75s) **plus danger stripes** (`.cr-danger-stripes`) — owner-colored: `--warn` (oklch 0.82 0.18 85) for self-critical, `--danger` (oklch 0.72 0.24 25) for enemy-critical
+- **Threatened notch**: small `--warn` mark on the bottom edge of any of my cells adjacent to an enemy critical
+- Explosion: `cr-orb-burst` scale-up + blur; pre-burst white-hot flash (`.cr-pre-burst-flash`)
 - Capture: `cr-capture-ripple` expanding ring
 - Flying orbs: `cr-orb-fly` travels source→target (FlyingOrbOverlay)
-- No count label rendered in current `AtomRCell.tsx` (orb arrangement is the only count cue — at 4 orbs you see 4 dots, but no number)
+- Turn text cross-fade (`.cr-turn-fade` 0.18s)
+- Reduced-motion: `@media (prefers-reduced-motion: reduce)` zeroes animation/transition durations and replaces pulse with a static strong border
 
 ## HUD (`GameHud.tsx`)
 
-- 3-column grid: `[home] [turn reel] [undo/settings]`
-- **TurnReel**: horizontal 3-slot strip of orbs (prev · current · next). Animates a slide on turn change (380ms cubic-bezier).
-- Center slot = current player. No text label, no player name, no "Turn: P1" anywhere.
-- Color is the only turn signal. Fails color-blind accessibility.
-- Winner locks the reel.
+- 3-column grid: `[home] [turn status] [undo / rules / board]`
+- **Turn status** (center, `aria-live="polite"`):
+  - `PlayerBadge` (P1/P2/…) filled in player color
+  - Oxanium uppercase status text: `PLAYER N'S TURN` (or `… WINS` / `UNSTABLE LOOP` / `RESOLVING…`)
+  - Inline countdown `MM:SS` when an online turn deadline is set — color shifts green → amber → red as time runs out
+- **TurnTimerBar**: thin progress bar below the status. Depletes over the 30s online deadline; replaced by an indeterminate pulse during `resolving`; stays full + neutral in local hot-seat
+- **PlayerChipsStrip**: horizontal strip below the timer — one chip per active player with `PlayerBadge` + orb count, current player highlighted in their color, eliminated players dimmed + struck through
+- Right cluster: undo (if available), rules (How to play), board settings
+- Winner locks the status text
+
+Color is reinforcement, not the only signal: badge + text + timer all carry the turn state explicitly.
 
 ## Cell Interactivity
 
-- All cells are `<button>`s with `aria-label` like `"D3, p1 cell with 1 orb, illegal"` — good for screen readers
+- All cells are `<button>`s with `aria-label` like `"D3, p1 cell with 1 orb, critical, illegal"` — good for screen readers
 - Disabled (`aria-disabled`) when not legal
-- **No visible legal-move hint** on the board itself — only hover state shows a tint
+- **Always-visible legal-move hint** on empty legal cells: green tint + inset ring (not hover-only)
+- Critical cells render danger stripes + inner pulse + (for my cells next to enemy criticals) a threatened notch
 - Last move: thin white inset ring
 - Suggested (training): dashed border in suggestion color
 - Queued premove: solid ring in queue color
-- Keyboard navigation via `useBoardKeyboardNavigation` hook (no UI hint that it exists)
+- Keyboard navigation via `useBoardKeyboardNavigation` hook (arrow keys + repeat)
 
 ## Settings Modal (`GameSettings.tsx`)
 
-- Sliders: rows, cols, player count, difficulty (AI only)
-- Buttons: "USE RECOMMENDED SIZE", "APPLY & RESET"
-- No presets (e.g. 9×6, 12×8, 16×10)
+- **Presets first** (4 per orientation, matching `getRecommendedSize`): `9×6 classic` / `12×8` / `14×10` / `16×10 max` (portrait transposed). Active preset highlights when current `rows×cols` matches.
+- Sliders: rows `3–12`, cols `4–16`, player count `2–8`, difficulty `1–10` (AI only)
+- Toggles: **premoves** (queue one move during opponent's turn) and **vibration** (Web Vibration API haptics)
+- Buttons: `×` close, `apply & reset`
 - Escape to close
+- No "use recommended size" button — the auto-sizer runs once on screen mount and presets cover the same ground
 
 ## Online Match Behavior
 
@@ -131,79 +144,71 @@ Returns:
 
 - Better Auth on Convex. Email/password + session.
 - `requireSessionFn` guards `/play/online` and match routes
-- Sidebar shows user chip when signed in, "SIGN IN" link otherwise
-- Sign-in / sign-up are no-chrome routes (no sidebar)
+- Top bar shows user chip when signed in, "SIGN IN" link otherwise
+- Sign-in / sign-up are no-chrome routes (no top bar)
 
 ## What Already Works Well
 
 - Engine is correct, deterministic, tested
-- Animation system explains causality (placement → fly → capture → explosion)
-- Critical-cell pulse exists
+- Animation system explains causality (placement → fly → capture → explosion + pre-burst flash)
+- Critical-cell pulse + danger stripes + threatened notch exist
+- Always-visible legal-move hint exists
+- CellCount `2/3` labels exist
 - Last-move highlight exists
-- Keyboard nav exists
-- Premoves queue exists
+- Keyboard nav (arrows) exists
+- Premoves queue exists (with toggle in settings)
 - Replay panel exists (post-game)
 - Online matchmaking + room codes + 30s timeout exist
 - PWA installable
-- Accessibility: `aria-label` per cell is detailed
+- Accessibility: detailed `aria-label` per cell, `aria-live` turn region, visible focus ring, `prefers-reduced-motion` fallback
+- HUD: explicit `PLAYER N'S TURN` text + countdown timer + per-player chips strip
+- Onboarding: 3-step first-time overlay (`OnboardingOverlay.tsx`) with `?` re-open button in the HUD; localStorage flag `atomr:onboarded`
+- Home page: live demo board auto-playing a cascade loop
+- Mode picker: hierarchical (LOCAL primary, others secondary/tertiary)
+- Settings: presets first, then sliders + toggles
+- Vibration haptics (Web Vibration API) with settings toggle
 
-## What Sucks (UI critique)
+## Current State & Remaining Gaps
 
-### Turn identity is invisible
-HUD shows a reel of colored orbs. No "P1's turn" text, no player names, no number. New players cannot tell whose turn it is without memorizing colors. Fails the #1 rule from playability research: persistent explicit turn state.
+This section replaces the old "What Sucks" list. The pre-rewrite critiques below have been addressed; the items that remain are genuine open gaps, not regressions.
 
-### Board auto-fills viewport on desktop
-`getRecommendedSize` clamps cols at 16 — on wide screens you get 16×8 with 50px cells. Classic AtomR is 9×6. Board becomes a wall of tiny squares; tactical readability collapses. Should cap at canonical size or center a fixed-aspect board with breathing room.
+### Addressed since the pre-rewrite critique
 
-### No legal-move hint on board
-Playability doc explicitly calls for "subtle ring / inset glow / faint tint" on playable cells. Current: only hover reveals legal cells. Mobile users (no hover) get zero hint.
+- **Turn identity is invisible** → Fixed. HUD now shows `PLAYER N'S TURN` text + badge + countdown + per-player chips strip. Color is reinforcement only.
+- **Board auto-fills viewport on desktop** → Fixed. `getRecommendedSize` is preset-based, capped at 16×10 max, with a 56px minimum cell size and a 9×6 classic fallback.
+- **No legal-move hint on board** → Fixed. Empty legal cells get a green tint + inset ring, always visible.
+- **Critical state is color-only** → Fixed. Danger stripes (self=warn, enemy=danger) + inner ring pulse + threatened notch on my cells next to enemy criticals.
+- **No orb count number** → Fixed. `CellCount` renders `2/3` bottom-right in JetBrains Mono.
+- **Cell coordinate labels missing on board** → Partially. `CellCoordinate` component exists and is wired; visibility is caller-controlled (e.g. online match last-move label). Not always-on across all modes.
+- **Home page is generic** → Fixed. Live demo board (real engine, 4×3 / 3×4) auto-plays a cascade loop as the hero.
+- **Mode picker is flat** → Fixed. Hierarchical cards: LOCAL primary, Online + vs CPU secondary, Training + AI Battle tertiary.
+- **Settings has no presets** → Fixed. 4 presets per orientation, active preset highlighted.
+- **Bottom hint is unreadable** → Improved. Hint now uses `rgba(255,255,255,0.42)` (≈ `--text-faint`) instead of `white/12`. Still 10px, still decorative in tone, but above the old contrast floor.
+- **No rules / how-to-play** → Fixed. `OnboardingOverlay` 3-step first-time overlay + `?` rules button in the HUD.
+- **Sidebar is dead weight on play routes** → Fixed. `Sidebar.tsx` now exports a `TopBar` (fixed `h-14` header, not a 250px rail). Play routes remain no-chrome.
+- **HUD buttons are tiny + labelless on mobile** → Partially. Buttons are `h-11 w-11` with labels hidden under 480px (icon-only). Labels appear at `≥480px`. Tap target meets the 44pt minimum.
+- **No reduced-motion path** → Fixed. `@media (prefers-reduced-motion: reduce)` zeroes animations and replaces the critical pulse with a static strong border.
 
-### Critical state is color-only
-Critical cells pulse, but the cue is the owner color. No differentiation between "my critical" vs "enemy critical" vs "my cell threatened by enemy critical". Playability doc called this out as the most important threat readability fix.
+### Still open
 
-### No orb count number
-Orb count is conveyed only by dot arrangement. At 3 orbs in a tight cell you squint. Docs originally planned a JetBrains Mono count label — not in current `AtomRCell.tsx`.
-
-### Cell coordinate labels missing on board
-Cell `aria-label` has `A1` etc. but nothing visible. Online match doc says "compact text label with player + board coordinate" for last move — not rendered.
-
-### Home page is generic
-"Turn-based cascading play. Place orbs. Capture cells. Clear the board." Two links. No preview of the board, no rules teaser, no animated demo, no visual identity beyond two radial gradients. Looks like every other AI-generated landing.
-
-### Mode picker is flat
-5 rows, same visual weight, only icon + label + copy. No hierarchy (Local should be primary — it's the only no-setup mode). No preview of what each mode looks like.
-
-### Settings has no presets
-Sliders only. No "9×6 classic", "12×8 large", "16×10 huge" buttons. "USE RECOMMENDED SIZE" just re-runs the auto-sizer that already produced a bad size.
-
-### Bottom hint is unreadable
-`text-[10px] tracking-[0.3em] text-white/12` — "Place on empty or owned cells · chains resolve automatically". Below contrast minimum. Pure decoration.
-
-### No rules / how-to-play
-New users land on a board with zero guidance. No first-time overlay, no "place on empty or your own cells" tooltip, no rules page. The bottom hint tries to be this but fails.
-
-### No install prompt
-PWA is set up but no UI surfaces it. Mobile users miss "add to home screen".
-
-### Sidebar is dead weight on play routes
-Play routes are no-chrome (Sidebar hidden). But on `/` and `/play` the sidebar takes 250px on desktop with just 2 nav items + auth chip. Wasted space; could be a top bar or integrated into the page.
-
-### HUD buttons are tiny + labelless on mobile
-`h-11 w-11` icons. Labels hidden under 480px. "BOARD" text is the only word. Undo / settings / home are icon-only on phones.
-
-### No sound
-Game feel research flagged optional sound as a high-impact low-cost win. No audio assets, no mute toggle (which the doc says to ship from day one).
-
-### No reduced-motion path
-Animations are core to gameplay (cascade playback). No `prefers-reduced-motion` fallback that skips staggered playback.
+- **No sound.** Game feel research flagged optional sound as a high-impact low-cost win. No audio assets, no mute toggle. The §16 decision locked "no sound, vibration only" — so this is intentional, but the door is open.
+- **No PWA install prompt UI.** PWA manifest + service worker exist, but no UI surfaces "add to home screen". Mobile users miss the install affordance.
+- **No `?` / `R` / `U` keyboard shortcuts.** The `?` rules shortcut, `R` reset, and `U` undo called for in the rethink are not bound. The `?` rules button is mouse/touch only. `Esc` closes modals and arrow-key board nav exist.
+- **`cr-cell-press` CSS exists but is not applied.** The squash-on-tap keyframe is defined in `styles.css` but no cell wires the class. Cell taps have no press animation today.
+- **No surrender / exit button.** The HUD has home / undo / rules / board, but no explicit surrender or exit-current-game action mid-match. Players back out via the home link.
+- **Winner overlay has no longest-cascade stat or loser chip.** `GameOverlay` shows `{winnerOrbs} orbs · {moves} moves` only. The longest-cascade count and the struck-through loser chip from the rethink are not implemented. `computeStats` has a TODO-style comment noting cascade length isn't derivable from current history.
+- **Board preset not persisted.** No `localStorage` key for the user's last-selected preset (`atomr:board-preset`). The board re-runs `getRecommendedSize` on every mount; manual overrides don't stick across reloads.
+- **No `resize` / `orientationchange` listener.** If the user rotates the device mid-session, the board does not re-evaluate orientation. A reload is required to swap landscape↔portrait presets.
+- **`--bg` / `--surface` / `--line` / `--danger` / `--warn` / `--ok` design tokens are not in `styles.css`.** The rethink proposed a token set; the codebase uses the legacy `--background` / `--card` / `--border` / `--foreground` / `--muted` set plus inline `oklch()` literals for danger/warn/ok. The proposed tokens are documented in `.docs/ui-rethink.md` §3 as planned, not implemented.
+- **Bottom hint is still decorative.** Contrast is fixed but the line is still 10px tracked-out caps doing first-time-user education work that the onboarding overlay now handles better. Candidate for removal or demotion.
 
 ## Files (key)
 
 ```
 src/routes/
-  __root.tsx              # layout, no-chrome route list, theme init
-  index.tsx               # landing
-  play.tsx                # mode picker
+  __root.tsx              # layout, no-chrome route list, theme init, TopBar mount
+  index.tsx               # landing + live demo board
+  play.tsx                # mode picker (hierarchical cards)
   play/local.tsx          # thin wrapper over LocalPlayScreen
   play/online.tsx          # lobby (queue + room)
   play/match.$matchId.tsx # online match (23KB — biggest route)
@@ -222,17 +227,26 @@ src/features/atomr/
   onlineMatchmaking.ts           # client
   constants.ts                   # PLAYER_COLORS, PLAYER_NAMES
   selectors.ts                   # isCellCritical etc.
+  utils/recommendedSize.ts       # preset-based board sizing
+  utils/vibration.ts             # Web Vibration API haptics
   components/
     AtomRBoard.tsx              # grid + keyboard nav
-    AtomRCell.tsx                # cell render (orbs, rings, hints)
-    GameHud.tsx                  # turn reel + buttons
+    AtomRCell.tsx                # cell render (orbs, rings, stripes, count, hints)
+    CellLabels.tsx               # CellCount + CellCoordinate sub-components
+    PlayerBadge.tsx              # reusable P1/P2 badge
+    GameHud.tsx                  # turn status + timer + chips strip + buttons
     GameOverlay.tsx              # winner overlay
-    GameSettings.tsx             # sliders modal
+    GameSettings.tsx             # presets + sliders + toggles modal
+    OnboardingOverlay.tsx         # 3-step first-time rules overlay
     ReplayPanel.tsx              # post-game replay
     FlyingOrbOverlay.tsx         # orb travel animation
     LocalPlayScreen.tsx          # assembles local game
     AiPlayScreen.tsx             # assembles AI game
     AiBattleScreen.tsx           # CPU vs CPU
+    TrainingPlayScreen.tsx       # training (ghost hints)
+
+src/components/
+  Sidebar.tsx                   # TopBar (fixed h-14 header, despite filename)
 ```
 
 ## Sources
@@ -242,4 +256,5 @@ src/features/atomr/
 - `.docs/atomr-playability-research.md` — readability + UX
 - `.docs/atomr-ui-v2.md` — current visual language spec
 - `.docs/online-match-behavior.md` — online rules
-- Source: `src/routes/*`, `src/features/atomr/*`, `src/components/*`
+- `.docs/ui-rethink.md` — redesign plan + implementation status
+- Source: `src/routes/*`, `src/features/atomr/*`, `src/components/*`, `src/styles.css`
