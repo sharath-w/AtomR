@@ -211,12 +211,6 @@ code {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Timer bar depletion */
-@keyframes cr-timer-deplete {
-  0%   { transform: scaleX(1); }
-  100% { transform: scaleX(0); }
-}
-
 /* Plasma orb — radial gradient core */
 .cr-orb-plasma {
   background-image: radial-gradient(
@@ -252,11 +246,6 @@ code {
   animation: cr-turn-fade 0.18s ease-out;
 }
 
-.cr-timer-bar {
-  transform-origin: left center;
-  animation: cr-timer-deplete var(--timer-duration, 30s) linear forwards;
-}
-
 /* Resolving state — indeterminate pulse on timer bar */
 @keyframes cr-timer-pulse {
   0%, 100% { opacity: 0.4; transform: translateX(0); }
@@ -285,15 +274,6 @@ code {
     animation: none;
   }
 
-  /* Orb critical throb: static */
-  .cr-orb-critical {
-    animation: none !important;
-  }
-
-  /* Timer bar: instant fill */
-  .cr-timer-bar {
-    animation: none !important;
-  }
 }
 
 /* Settings sliders — visible track on dark background */

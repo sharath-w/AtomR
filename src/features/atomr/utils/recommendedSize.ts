@@ -6,14 +6,14 @@ export type BoardPreset = {
 	description?: string;
 };
 
-export const LANDSCAPE_PRESETS: BoardPreset[] = [
+export const LANDSCAPE_PRESETS: readonly BoardPreset[] = [
 	{ id: "classic", label: "9×6", rows: 6, cols: 9, description: "classic" },
 	{ id: "large", label: "12×8", rows: 8, cols: 12 },
 	{ id: "huge", label: "14×10", rows: 10, cols: 14 },
 	{ id: "max", label: "16×10", rows: 10, cols: 16, description: "max" },
 ];
 
-export const PORTRAIT_PRESETS: BoardPreset[] = [
+export const PORTRAIT_PRESETS: readonly BoardPreset[] = [
 	{ id: "classic", label: "6×9", rows: 9, cols: 6, description: "classic" },
 	{ id: "large", label: "8×12", rows: 12, cols: 8 },
 	{ id: "huge", label: "10×14", rows: 14, cols: 10 },
@@ -22,7 +22,7 @@ export const PORTRAIT_PRESETS: BoardPreset[] = [
 
 const MIN_CELL_PX = 56;
 
-export function getBoardPresets(): BoardPreset[] {
+export function getBoardPresets(): readonly BoardPreset[] {
 	if (typeof window === "undefined") return LANDSCAPE_PRESETS;
 	return window.innerHeight > window.innerWidth
 		? PORTRAIT_PRESETS
@@ -35,11 +35,13 @@ export function getBoardPresets(): BoardPreset[] {
  * Called only on the client (requires window).
  */
 export function getRecommendedSize(): { rows: number; cols: number } {
+	const presets = getBoardPresets();
+
 	if (typeof window === "undefined") {
-		return { rows: LANDSCAPE_PRESETS[0].rows, cols: LANDSCAPE_PRESETS[0].cols };
+		const fallback = presets[0];
+		return { rows: fallback.rows, cols: fallback.cols };
 	}
 
-	const presets = getBoardPresets();
 	const availW = window.innerWidth - 24;
 	const availH = window.innerHeight - 160;
 
@@ -54,15 +56,4 @@ export function getRecommendedSize(): { rows: number; cols: number } {
 
 	const fallback = presets[0];
 	return { rows: fallback.rows, cols: fallback.cols };
-}
-
-/**
- * Find the preset id matching a given rows/cols in the current orientation,
- * or null if no preset matches.
- */
-export function findPresetId(rows: number, cols: number): string | null {
-	return (
-		getBoardPresets().find((p) => p.rows === rows && p.cols === cols)?.id ??
-		null
-	);
 }
