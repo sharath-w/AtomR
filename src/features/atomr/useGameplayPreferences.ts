@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { setVibrationEnabled } from "./utils/vibration";
 
 type GameplayPreferences = {
 	enablePremoves: boolean;
+	enableVibration: boolean;
 };
 
 const STORAGE_KEY = "atomr:gameplay-preferences";
 
 const DEFAULT_PREFERENCES: GameplayPreferences = {
 	enablePremoves: true,
+	enableVibration: true,
 };
 
 function readPreferences(): GameplayPreferences {
@@ -19,6 +22,7 @@ function readPreferences(): GameplayPreferences {
 		const parsed = JSON.parse(stored);
 		return {
 			enablePremoves: parsed.enablePremoves === true,
+			enableVibration: parsed.enableVibration !== false,
 		};
 	} catch {
 		return DEFAULT_PREFERENCES;
@@ -31,8 +35,15 @@ export function useGameplayPreferences() {
 	);
 
 	useEffect(() => {
+		setVibrationEnabled(preferences.enableVibration);
+	}, [preferences.enableVibration]);
+
+	useEffect(() => {
 		try {
-			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+			window.localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify(preferences),
+			);
 		} catch {
 			// Preference persistence should not block gameplay.
 		}
@@ -41,10 +52,10 @@ export function useGameplayPreferences() {
 	return {
 		preferences,
 		setEnablePremoves(enablePremoves: boolean) {
-			setPreferences((current) => ({
-				...current,
-				enablePremoves,
-			}));
+			setPreferences((current) => ({ ...current, enablePremoves }));
+		},
+		setEnableVibration(enableVibration: boolean) {
+			setPreferences((current) => ({ ...current, enableVibration }));
 		},
 	};
 }

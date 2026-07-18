@@ -79,7 +79,7 @@ function RootLayout() {
 			{!isNoChrome ? <Sidebar /> : null}
 			<div
 				className={
-					!isNoChrome ? "min-w-0 pl-[274px] max-[960px]:pl-0" : undefined
+					!isNoChrome ? "min-w-0 pt-14" : undefined
 				}
 			>
 				<Outlet />

@@ -25,6 +25,7 @@ type AtomRBoardProps = {
 	queuedPlayer?: PlayerId | null;
 	keyboardNavigationEnabled?: boolean;
 	canPlay?: boolean;
+	showCoordinates?: boolean;
 	onPlay: (row: number, col: number) => void;
 };
 
@@ -62,6 +63,7 @@ export default function AtomRBoard({
 	queuedPlayer,
 	keyboardNavigationEnabled = false,
 	canPlay = true,
+	showCoordinates = false,
 	onPlay,
 }: AtomRBoardProps) {
 	const explosionSet = new Set(activeExplosionKeys);
@@ -134,6 +136,7 @@ export default function AtomRBoard({
 					isQueued={isQueued}
 					suggestedPlayer={suggestedPlayer}
 					queuedPlayer={queuedPlayer}
+					showCoordinates={showCoordinates}
 					tabIndex={
 						keyboardNavigationEnabled
 							? focusedPosition.row === row && focusedPosition.col === col

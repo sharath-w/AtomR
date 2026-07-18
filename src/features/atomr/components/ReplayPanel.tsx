@@ -234,7 +234,7 @@ export default function ReplayPanel({
 					</span>
 					<span
 						className="text-xs font-medium"
-						style={{ color: "rgba(255,255,255,0.22)" }}
+						style={{ color: "rgba(255,255,255,0.55)" }}
 					>
 						{moveHistory.length} move{moveHistory.length !== 1 ? "s" : ""}
 					</span>
@@ -372,7 +372,7 @@ export default function ReplayPanel({
 							<div
 								className="px-4 py-8 text-center"
 								style={{
-									color: "rgba(255,255,255,0.18)",
+								color: "rgba(255,255,255,0.5)",
 									fontSize: "12px",
 								}}
 							>
@@ -511,7 +511,7 @@ export default function ReplayPanel({
 						) : (
 							<div
 								className="flex flex-col items-center gap-3"
-								style={{ color: "rgba(255,255,255,0.15)" }}
+							style={{ color: "rgba(255,255,255,0.42)" }}
 							>
 								<svg
 									aria-hidden="true"
@@ -588,19 +588,19 @@ export default function ReplayPanel({
 			>
 				<span
 					className="text-[9px] uppercase tracking-[0.2em]"
-					style={{ color: "rgba(255,255,255,0.12)" }}
+					style={{ color: "rgba(255,255,255,0.42)" }}
 				>
 					↑↓ navigate
 				</span>
 				<span
 					className="text-[9px] uppercase tracking-[0.2em]"
-					style={{ color: "rgba(255,255,255,0.12)" }}
+					style={{ color: "rgba(255,255,255,0.42)" }}
 				>
 					B toggle before/after
 				</span>
 				<span
 					className="text-[9px] uppercase tracking-[0.2em]"
-					style={{ color: "rgba(255,255,255,0.12)" }}
+					style={{ color: "rgba(255,255,255,0.42)" }}
 				>
 					Esc close
 				</span>

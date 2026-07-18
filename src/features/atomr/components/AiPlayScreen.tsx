@@ -27,6 +27,7 @@ import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
 import ReplayPanel from "./ReplayPanel";
+import OnboardingOverlay from "./OnboardingOverlay";
 
 const PLAYER_NAMES = {
 	p1: "Player",
@@ -42,6 +43,7 @@ export default function AiPlayScreen() {
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 	const [replayOpen, setReplayOpen] = useState(false);
 	const [queuedMoves, setQueuedMoves] = useState<Position[]>([]);
+	const [rulesOpen, setRulesOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -260,6 +262,7 @@ export default function AiPlayScreen() {
 					onSettingsOpen={() => setSettingsOpen(true)}
 					onUndo={handleUndoTurn}
 					undoDisabled={!canUndo || isAnimating}
+					onShowRules={() => setRulesOpen(true)}
 				/>
 			</div>
 
@@ -338,6 +341,7 @@ export default function AiPlayScreen() {
 							setQueuedMoves([]);
 							reset();
 						}}
+						moveHistory={moveHistory}
 						playerNames={PLAYER_NAMES}
 						onReplay={
 							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
@@ -375,6 +379,11 @@ export default function AiPlayScreen() {
 				cols={cols}
 				playerCount={2}
 				playerNames={PLAYER_NAMES}
+			/>
+
+			<OnboardingOverlay
+				forceOpen={rulesOpen}
+				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
 	);

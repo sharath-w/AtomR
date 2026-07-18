@@ -23,6 +23,7 @@ import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
 import ReplayPanel from "./ReplayPanel";
+import OnboardingOverlay from "./OnboardingOverlay";
 
 function getAiNames(playerCount: number): Partial<Record<PlayerId, string>> {
 	return Object.fromEntries(
@@ -41,6 +42,7 @@ export default function AiBattleScreen() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 	const [replayOpen, setReplayOpen] = useState(false);
+	const [rulesOpen, setRulesOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -186,7 +188,11 @@ export default function AiBattleScreen() {
 			/>
 
 			<div className="relative mx-auto w-full shrink-0" style={hudStyle}>
-				<GameHud state={state} onSettingsOpen={() => setSettingsOpen(true)} />
+				<GameHud
+					state={state}
+					onSettingsOpen={() => setSettingsOpen(true)}
+					onShowRules={() => setRulesOpen(true)}
+				/>
 			</div>
 
 			<div
@@ -211,6 +217,7 @@ export default function AiBattleScreen() {
 						state={state}
 						onReset={reset}
 						resetLabel="run again"
+						moveHistory={moveHistory}
 						playerNames={playerNames}
 						onReplay={
 							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
@@ -249,6 +256,11 @@ export default function AiBattleScreen() {
 				cols={cols}
 				playerCount={playerCount}
 				playerNames={playerNames}
+			/>
+
+			<OnboardingOverlay
+				forceOpen={rulesOpen}
+				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
 	);

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Flag, Home } from "lucide-react";
+import { Flag, HelpCircle, Home } from "lucide-react";
 import {
 	useEffect,
 	useEffectEvent,
@@ -12,6 +12,7 @@ import {
 import AtomRBoard from "#/features/atomr/components/AtomRBoard";
 import GameOverlay from "#/features/atomr/components/GameOverlay";
 import GameSettings from "#/features/atomr/components/GameSettings";
+import OnboardingOverlay from "#/features/atomr/components/OnboardingOverlay";
 import { PLAYER_COLORS } from "#/features/atomr/constants";
 import { getCapacity } from "#/features/atomr/engine";
 import {
@@ -64,6 +65,7 @@ function MatchPage() {
 	const resignMatch = useMutation(api.online.resignMatch);
 	const [resignPending, setResignPending] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [rulesOpen, setRulesOpen] = useState(false);
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const containerRef = useRef<HTMLDivElement>(null);
 	const timeoutClaimedForRef = useRef<string | null>(null);
@@ -578,6 +580,24 @@ function MatchPage() {
 						<div className="flex items-center gap-2">
 							<button
 								type="button"
+								onClick={() => setRulesOpen(true)}
+								aria-label="How to play"
+								className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3"
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									color: "rgba(255,255,255,0.66)",
+									fontFamily: "'Oxanium', sans-serif",
+									fontSize: "10px",
+									fontWeight: 700,
+									letterSpacing: "0.22em",
+									textTransform: "uppercase",
+								}}
+							>
+								<HelpCircle size={14} strokeWidth={2} />
+								<span className="hidden min-[480px]:inline">rules</span>
+							</button>
+							<button
+								type="button"
 								onClick={() => setSettingsOpen(true)}
 								className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] min-[480px]:h-10 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3"
 								style={{
@@ -814,6 +834,10 @@ function MatchPage() {
 					// Online match settings do not mutate board size mid-match.
 				}}
 				onClose={() => setSettingsOpen(false)}
+			/>
+			<OnboardingOverlay
+				forceOpen={rulesOpen}
+				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
 	);

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { getRecommendedSize } from "#/features/atomr/utils/recommendedSize";
+import {
+	type BoardPreset,
+	getBoardPresets,
+} from "#/features/atomr/utils/recommendedSize";
 
 type GameSettingsProps = {
 	open: boolean;
@@ -9,6 +12,7 @@ type GameSettingsProps = {
 	playerCountLocked?: boolean;
 	difficulty?: number;
 	enablePremoves?: boolean;
+	enableVibration?: boolean;
 	onApply: (
 		rows: number,
 		cols: number,
@@ -16,6 +20,7 @@ type GameSettingsProps = {
 		playerCount?: number,
 	) => void;
 	onEnablePremovesChange?: (enabled: boolean) => void;
+	onEnableVibrationChange?: (enabled: boolean) => void;
 	onClose: () => void;
 };
 
@@ -27,14 +32,17 @@ export default function GameSettings({
 	playerCountLocked = true,
 	difficulty,
 	enablePremoves,
+	enableVibration,
 	onApply,
 	onEnablePremovesChange,
+	onEnableVibrationChange,
 	onClose,
 }: GameSettingsProps) {
 	const [localRows, setLocalRows] = useState(rows);
 	const [localCols, setLocalCols] = useState(cols);
 	const [localPlayerCount, setLocalPlayerCount] = useState(playerCount ?? 2);
 	const [localDifficulty, setLocalDifficulty] = useState(difficulty ?? 5);
+	const [presets, setPresets] = useState<BoardPreset[]>(() => getBoardPresets());
 
 	// Sync local state when modal opens
 	useEffect(() => {
@@ -43,6 +51,7 @@ export default function GameSettings({
 			setLocalCols(cols);
 			setLocalPlayerCount(playerCount ?? 2);
 			setLocalDifficulty(difficulty ?? 5);
+			setPresets(getBoardPresets());
 		}
 	}, [open, rows, cols, playerCount, difficulty]);
 
@@ -76,6 +85,10 @@ export default function GameSettings({
 	const sliderStyle = (thumbColor: string): React.CSSProperties =>
 		({ "--thumb-color": thumbColor, height: "4px" }) as React.CSSProperties;
 
+	const activePresetId = presets.find(
+		(p) => p.rows === localRows && p.cols === localCols,
+	)?.id;
+
 	return (
 		<>
 			{/* Backdrop — button so Biome a11y rules are satisfied */}
@@ -99,7 +112,7 @@ export default function GameSettings({
 				className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
 			>
 				<div
-					className="relative mx-4 w-full max-w-xs rounded-2xl p-6 flex flex-col gap-5 pointer-events-auto"
+					className="relative mx-4 max-h-[90dvh] w-full max-w-xs overflow-y-auto rounded-2xl p-6 flex flex-col gap-5 pointer-events-auto"
 					style={{
 						background: "#0d0d1a",
 						border: "1px solid rgba(255,255,255,0.07)",
@@ -125,6 +138,55 @@ export default function GameSettings({
 						</button>
 					</div>
 
+					{/* Presets */}
+					<div className="flex flex-col gap-2">
+						<span style={labelStyle}>presets</span>
+						<div className="grid grid-cols-2 gap-2">
+							{presets.map((preset) => {
+								const isActive = activePresetId === preset.id;
+								return (
+									<button
+										key={preset.id}
+										type="button"
+										onClick={() => {
+											setLocalRows(preset.rows);
+											setLocalCols(preset.cols);
+										}}
+										className="rounded-xl px-3 py-3 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+										style={{
+											background: isActive
+												? "color-mix(in srgb, oklch(0.72 0.19 23) 22%, transparent)"
+												: "rgba(255,255,255,0.03)",
+											border: `1px solid ${isActive ? "oklch(0.72 0.19 23)aa" : "rgba(255,255,255,0.06)"}`,
+										}}
+									>
+										<div
+											className="font-mono text-[14px] font-semibold"
+											style={{
+												color: isActive
+													? "oklch(0.72 0.19 23)"
+													: "rgba(255,255,255,0.82)",
+											}}
+										>
+											{preset.label}
+										</div>
+										{preset.description && (
+											<div
+												className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.2em]"
+												style={{ color: "rgba(255,255,255,0.3)" }}
+											>
+												{preset.description}
+											</div>
+										)}
+									</button>
+								);
+							})}
+						</div>
+					</div>
+
+					{/* Divider */}
+					<div className="h-px bg-white/6" />
+
 					{/* Rows */}
 					<div className="flex flex-col gap-2">
 						<div className="flex items-center justify-between">
@@ -145,7 +207,7 @@ export default function GameSettings({
 							style={{
 								fontFamily: "'JetBrains Mono', monospace",
 								fontSize: "8px",
-								color: "rgba(255,255,255,0.15)",
+								color: "rgba(255,255,255,0.42)",
 							}}
 						>
 							<span>3</span>
@@ -173,7 +235,7 @@ export default function GameSettings({
 							style={{
 								fontFamily: "'JetBrains Mono', monospace",
 								fontSize: "8px",
-								color: "rgba(255,255,255,0.15)",
+								color: "rgba(255,255,255,0.42)",
 							}}
 						>
 							<span>4</span>
@@ -223,7 +285,7 @@ export default function GameSettings({
 									style={{
 										fontFamily: "'JetBrains Mono', monospace",
 										fontSize: "8px",
-										color: "rgba(255,255,255,0.15)",
+										color: "rgba(255,255,255,0.42)",
 									}}
 								>
 									<span>2</span>
@@ -253,7 +315,7 @@ export default function GameSettings({
 								style={{
 									fontFamily: "'JetBrains Mono', monospace",
 									fontSize: "8px",
-									color: "rgba(255,255,255,0.15)",
+									color: "rgba(255,255,255,0.42)",
 								}}
 							>
 								<span>1</span>
@@ -282,26 +344,24 @@ export default function GameSettings({
 						</label>
 					) : null}
 
-					{/* Recommended size */}
-					<button
-						type="button"
-						onClick={() => {
-							const rec = getRecommendedSize();
-							setLocalRows(rec.rows);
-							setLocalCols(rec.cols);
-						}}
-						className="transition-opacity hover:opacity-70 active:scale-95"
-						style={{
-							fontFamily: "'Oxanium', sans-serif",
-							fontSize: "9px",
-							color: "rgba(255,255,255,0.2)",
-							textTransform: "uppercase",
-							letterSpacing: "0.3em",
-							textAlign: "center",
-						}}
-					>
-						use recommended size
-					</button>
+					{enableVibration !== undefined && onEnableVibrationChange ? (
+						<label className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
+							<div className="min-w-0">
+								<div style={labelStyle}>vibration</div>
+								<div className="mt-1 text-[11px] leading-5 text-white/45">
+									Subtle haptic feedback on placement, capture, and winner.
+								</div>
+							</div>
+							<input
+								type="checkbox"
+								checked={enableVibration}
+								onChange={(event) =>
+									onEnableVibrationChange(event.target.checked)
+								}
+								className="h-4 w-4 accent-[oklch(0.72_0.19_23)]"
+							/>
+						</label>
+					) : null}
 
 					{/* Apply */}
 					<button

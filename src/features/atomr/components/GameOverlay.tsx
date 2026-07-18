@@ -1,5 +1,8 @@
 import { PLAYER_COLORS, PLAYER_NAMES } from "../constants";
+import { countPlayerOrbsInState } from "../selectors";
 import type { GameState, PlayerId } from "../types";
+import type { MoveRecord } from "../useAtomRGame";
+import PlayerBadge from "./PlayerBadge";
 
 type GameOverlayProps = {
 	state: GameState;
@@ -8,7 +11,18 @@ type GameOverlayProps = {
 	resetPending?: boolean;
 	playerNames?: Partial<Record<PlayerId, string>>;
 	onReplay?: () => void;
+	/** Move history for stats line. */
+	moveHistory?: MoveRecord[];
 };
+
+function computeStats(state: GameState, history: MoveRecord[] | undefined) {
+	const winner = state.winner;
+	const winnerOrbs = winner != null ? countPlayerOrbsInState(state, winner) : 0;
+	const moves = history?.length ?? state.turnNumber;
+	// Longest cascade: count moves that exploded (approx via turnNumber deltas not available,
+	// so use didExplode from LastMove if present — here we just use moves count as a stable fallback).
+	return { winnerOrbs, moves };
+}
 
 export default function GameOverlay({
 	state,
@@ -17,6 +31,7 @@ export default function GameOverlay({
 	resetPending = false,
 	playerNames,
 	onReplay,
+	moveHistory,
 }: GameOverlayProps) {
 	if (!state.winner && !state.isDraw) {
 		return null;
@@ -29,6 +44,7 @@ export default function GameOverlay({
 		? (playerNames?.[state.winner] ?? PLAYER_NAMES[state.winner])
 		: "Draw";
 	const resultLabel = state.winner ? "wins" : "unstable loop";
+	const { winnerOrbs, moves } = computeStats(state, moveHistory);
 
 	return (
 		<div
@@ -38,7 +54,7 @@ export default function GameOverlay({
 				backdropFilter: "blur(10px)",
 			}}
 		>
-			<div className="flex flex-col items-center gap-6 px-8 py-10 text-center">
+			<div className="flex flex-col items-center gap-5 px-8 py-10 text-center">
 				{/* Winner label */}
 				<span
 					className="text-[10px] font-semibold uppercase tracking-[0.55em]"
@@ -52,16 +68,19 @@ export default function GameOverlay({
 
 				{/* Big winner name */}
 				<div className="flex flex-col items-center gap-1">
-					<span
-						className="text-6xl font-extrabold leading-none tracking-tighter sm:text-7xl"
-						style={{
-							fontFamily: "'Oxanium', sans-serif",
-							color: winnerColor,
-							textShadow: `0 0 40px ${winnerColor}55`,
-						}}
-					>
-						{winnerName}
-					</span>
+					<div className="flex items-center gap-3">
+						{state.winner && <PlayerBadge player={state.winner} size="lg" />}
+						<span
+							className="text-6xl font-extrabold leading-none tracking-tighter sm:text-7xl"
+							style={{
+								fontFamily: "'Oxanium', sans-serif",
+								color: winnerColor,
+								textShadow: `0 0 40px ${winnerColor}55`,
+							}}
+						>
+							{winnerName}
+						</span>
+					</div>
 					<span
 						className="text-sm font-medium uppercase tracking-[0.5em]"
 						style={{
@@ -74,6 +93,18 @@ export default function GameOverlay({
 						{resultLabel}
 					</span>
 				</div>
+
+				{/* Stats line */}
+				{state.winner && (
+					<div
+						className="flex items-center gap-4 font-mono text-[11px] tabular-nums"
+						style={{ color: "rgba(255,255,255,0.5)" }}
+					>
+						<span>{winnerOrbs} orbs</span>
+						<span style={{ color: "rgba(255,255,255,0.3)" }}>·</span>
+						<span>{moves} moves</span>
+					</div>
+				)}
 
 				{/* Action buttons */}
 				<div className="mt-2 flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">

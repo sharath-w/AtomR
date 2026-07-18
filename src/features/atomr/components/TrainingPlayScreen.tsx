@@ -18,6 +18,7 @@ import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
 import ReplayPanel from "./ReplayPanel";
+import OnboardingOverlay from "./OnboardingOverlay";
 
 const TRAINING_DIFFICULTY = 10;
 
@@ -27,6 +28,7 @@ export default function TrainingPlayScreen() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 	const [replayOpen, setReplayOpen] = useState(false);
+	const [rulesOpen, setRulesOpen] = useState(false);
 	const [suggestedMove, setSuggestedMove] = useState<{
 		row: number;
 		col: number;
@@ -184,7 +186,11 @@ export default function TrainingPlayScreen() {
 				className="relative mx-auto flex w-full shrink-0 flex-col"
 				style={hudStyle}
 			>
-				<GameHud state={state} onSettingsOpen={() => setSettingsOpen(true)} />
+				<GameHud
+					state={state}
+					onSettingsOpen={() => setSettingsOpen(true)}
+					onShowRules={() => setRulesOpen(true)}
+				/>
 			</div>
 
 			<div
@@ -210,6 +216,7 @@ export default function TrainingPlayScreen() {
 					<GameOverlay
 						state={state}
 						onReset={reset}
+						moveHistory={moveHistory}
 						onReplay={
 							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
 						}
@@ -219,7 +226,7 @@ export default function TrainingPlayScreen() {
 
 			<p
 				className="relative shrink-0 text-center text-[10px] uppercase tracking-[0.3em]"
-				style={{ color: "rgba(255,255,255,0.12)" }}
+				style={{ color: "rgba(255,255,255,0.42)" }}
 			>
 				two-player coaching board · follow the ghost or ignore it and compare
 			</p>
@@ -244,6 +251,11 @@ export default function TrainingPlayScreen() {
 				rows={rows}
 				cols={cols}
 				playerCount={2}
+			/>
+
+			<OnboardingOverlay
+				forceOpen={rulesOpen}
+				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
 	);

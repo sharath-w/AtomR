@@ -183,6 +183,118 @@ code {
 .cr-capture-ripple {
   animation: cr-capture-ripple 0.16s ease-out forwards;
 }
+/* ---- Phase 1 additions ---- */
+
+/* Cell press — squash on tap */
+@keyframes cr-cell-press {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+/* Pre-burst flash — white-hot hit before an orb explodes */
+@keyframes cr-pre-burst-flash {
+  0%   { opacity: 0; }
+  45%  { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+
+/* Danger stripes — scrolling border pattern for critical cells */
+@keyframes cr-danger-shift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 16px 0; }
+}
+
+/* Turn text cross-fade */
+@keyframes cr-turn-fade {
+  0%   { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Timer bar depletion */
+@keyframes cr-timer-deplete {
+  0%   { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+
+/* Plasma orb — radial gradient core */
+.cr-orb-plasma {
+  background-image: radial-gradient(
+    circle at 35% 30%,
+    oklch(0.96 0 0) 0%,
+    var(--orb-color, #fff) 45%,
+    color-mix(in srgb, var(--orb-color, #fff), #000 38%) 100%
+  );
+}
+
+/* Danger stripes for critical cells — owner-colored */
+.cr-danger-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--danger-color, transparent) 0px,
+    var(--danger-color, transparent) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  background-size: 16px 16px;
+  animation: cr-danger-shift 0.6s linear infinite;
+}
+
+.cr-cell-press {
+  animation: cr-cell-press 0.09s ease-out;
+}
+
+.cr-pre-burst-flash {
+  animation: cr-pre-burst-flash 0.08s ease-out forwards;
+}
+
+.cr-turn-fade {
+  animation: cr-turn-fade 0.18s ease-out;
+}
+
+.cr-timer-bar {
+  transform-origin: left center;
+  animation: cr-timer-deplete var(--timer-duration, 30s) linear forwards;
+}
+
+/* Resolving state — indeterminate pulse on timer bar */
+@keyframes cr-timer-pulse {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50%      { opacity: 0.9; transform: translateX(60%); }
+}
+
+/* Accessibility: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Critical pulse: static strong border instead */
+  .cr-critical-ring {
+    animation: none;
+    box-shadow: var(--cr-critical-shadow-hi) !important;
+  }
+
+  /* Danger stripes: static */
+  .cr-danger-stripes {
+    animation: none;
+  }
+
+  /* Orb critical throb: static */
+  .cr-orb-critical {
+    animation: none !important;
+  }
+
+  /* Timer bar: instant fill */
+  .cr-timer-bar {
+    animation: none !important;
+  }
+}
 
 /* Settings sliders — visible track on dark background */
 .settings-slider::-webkit-slider-runnable-track {

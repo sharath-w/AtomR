@@ -1,7 +1,9 @@
 import type { KeyboardEventHandler, Ref } from "react";
 import { PLAYER_COLORS } from "../constants";
-import { isCellCritical } from "../selectors";
+import { getCellCapacity, isCellCritical, isCellThreatened } from "../selectors";
 import type { Cell, GameState, PlayerId, Position } from "../types";
+import { formatBoardCoordinate } from "../shared";
+import { CellCoordinate, CellCount } from "./CellLabels";
 
 type AtomRCellProps = {
 	state: GameState;
@@ -19,6 +21,7 @@ type AtomRCellProps = {
 	isQueued?: boolean;
 	suggestedPlayer?: PlayerId | null;
 	queuedPlayer?: PlayerId | null;
+	showCoordinates?: boolean;
 	tabIndex?: number;
 	buttonRef?: Ref<HTMLButtonElement>;
 	onFocus?: () => void;
@@ -73,22 +76,23 @@ function OrbDisplay({
 				}
 				return (
 					<span
-						// key includes count + exploding state so remount triggers animation replay
 						// biome-ignore lint/suspicious/noArrayIndexKey: intentional — positional, see above
 						key={`${i}-${count}-${isExploding ? "ex" : "idle"}`}
-						className="absolute rounded-full"
-						style={{
-							left: `${pos.x}%`,
-							top: `${pos.y}%`,
-							width: count >= 4 ? "25%" : "30%",
-							aspectRatio: "1 / 1",
-							backgroundColor: color,
-							boxShadow: isCritical
-								? `0 0 8px ${color}cc, 0 0 20px ${color}88`
-								: `0 0 5px ${color}bb, 0 0 12px ${color}66`,
-							animation,
-							willChange: "transform, opacity",
-						}}
+						className="cr-orb-plasma absolute rounded-full"
+						style={
+							{
+								"--orb-color": color,
+								left: `${pos.x}%`,
+								top: `${pos.y}%`,
+								width: count >= 4 ? "25%" : "30%",
+								aspectRatio: "1 / 1",
+								boxShadow: isCritical
+									? `0 0 8px ${color}cc, 0 0 20px ${color}88`
+									: `0 0 5px ${color}bb, 0 0 12px ${color}66`,
+								animation,
+								willChange: "transform, opacity",
+							} as React.CSSProperties
+						}
 					/>
 				);
 			})}
@@ -112,6 +116,7 @@ export default function AtomRCell({
 	isQueued = false,
 	suggestedPlayer,
 	queuedPlayer,
+	showCoordinates = false,
 	tabIndex = -1,
 	buttonRef,
 	onFocus,
@@ -124,7 +129,15 @@ export default function AtomRCell({
 		: null;
 	const queuedColor = queuedPlayer ? PLAYER_COLORS[queuedPlayer] : "#8df0ff";
 	const critical = isCellCritical(state, cell, position.row, position.col);
-	const cellCoordinate = `${String.fromCharCode(65 + position.col)}${position.row + 1}`;
+	const isEnemyCritical =
+		critical && cell.owner !== null && cell.owner !== state.currentPlayer;
+	const isThreatened =
+		cell.owner === state.currentPlayer &&
+		cell.count > 0 &&
+		isCellThreatened(state, position.row, position.col, state.currentPlayer);
+
+	const cellCoordinate = formatBoardCoordinate(position.row, position.col);
+	const capacity = getCellCapacity(state, position.row, position.col);
 	const availability = canActivate
 		? "legal"
 		: isLegal
@@ -135,13 +148,14 @@ export default function AtomRCell({
 	const queuedSuffix = isQueued ? ", premove queued" : "";
 
 	// Background tint
-	let bgColor = "#141427";
+	let bgColor = "#0c0d14";
 	if (isExploding && ownerColor)
 		bgColor = `color-mix(in srgb, ${ownerColor} 20%, #07070b)`;
 	else if (isCapturing && ownerColor)
 		bgColor = `color-mix(in srgb, ${ownerColor} 12%, #07070b)`;
 	else if (ownerColor && cell.count > 0)
-		bgColor = `color-mix(in srgb, ${ownerColor} 10%, #141427)`;
+		bgColor = `color-mix(in srgb, ${ownerColor} 10%, #11121a)`;
+	else if (canActivate) bgColor = "color-mix(in srgb, #78d28a 6%, #0c0d14)";
 
 	return (
 		<button
@@ -166,10 +180,26 @@ export default function AtomRCell({
 					backgroundColor: bgColor,
 					boxShadow:
 						!cell.owner || cell.count === 0
-							? "inset 0 0 0 1px rgba(255,255,255,0.04)"
+							? canActivate
+								? "inset 0 0 0 1px rgba(120,210,138,0.22)"
+								: "inset 0 0 0 1px rgba(255,255,255,0.04)"
 							: "none",
 				}}
 			>
+				{/* Critical border — danger stripes (self=warn, enemy=danger) */}
+				{critical && ownerColor && (
+					<span
+						className="cr-danger-stripes absolute inset-0 rounded-[2px] pointer-events-none"
+						style={
+							{
+								"--danger-color": isEnemyCritical
+									? "oklch(0.72 0.24 25 / 0.28)"
+									: "oklch(0.82 0.18 85 / 0.24)",
+							} as React.CSSProperties
+						}
+					/>
+				)}
+
 				{/* Inner ring — critical pulse */}
 				<span
 					className={[
@@ -189,6 +219,17 @@ export default function AtomRCell({
 						} as React.CSSProperties
 					}
 				/>
+
+				{/* Threatened notch — small warn mark on bottom edge */}
+				{isThreatened && (
+					<span
+						className="pointer-events-none absolute bottom-0 left-1/2 h-[2px] w-6 -translate-x-1/2 rounded-full"
+						style={{
+							backgroundColor: "oklch(0.82 0.18 85 / 0.7)",
+							boxShadow: "0 0 6px oklch(0.82 0.18 85 / 0.5)",
+						}}
+					/>
+				)}
 
 				<span
 					className="pointer-events-none absolute inset-[1px] rounded-[3px] opacity-0 transition-opacity duration-100 group-focus-visible:opacity-100"
@@ -240,6 +281,14 @@ export default function AtomRCell({
 					/>
 				) : null}
 
+				{/* Pre-burst flash — white-hot before explosion */}
+				{isExploding && ownerColor && (
+					<span
+						className="cr-pre-burst-flash pointer-events-none absolute inset-0 rounded-[2px]"
+						style={{ backgroundColor: ownerColor as string }}
+					/>
+				)}
+
 				{/* Capture ripple — expanding ring when orb lands */}
 				{isCapturing && ownerColor && (
 					<span
@@ -260,6 +309,18 @@ export default function AtomRCell({
 						isCritical={critical}
 					/>
 				)}
+
+				{/* Count / capacity label */}
+				{cell.count > 0 && (
+					<CellCount count={cell.count} capacity={capacity} dimmed={false} />
+				)}
+
+				{/* Coordinate label */}
+				<CellCoordinate
+					label={cellCoordinate}
+					visible={showCoordinates}
+				/>
+
 				{/* Hover glow overlay — legal, non-animating only */}
 				{canActivate && (
 					<span
@@ -274,3 +335,4 @@ export default function AtomRCell({
 		</button>
 	);
 }
+

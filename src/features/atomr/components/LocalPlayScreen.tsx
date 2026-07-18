@@ -7,6 +7,7 @@ import GameHud from "./GameHud";
 import GameOverlay from "./GameOverlay";
 import GameSettings from "./GameSettings";
 import ReplayPanel from "./ReplayPanel";
+import OnboardingOverlay from "./OnboardingOverlay";
 
 export default function LocalPlayScreen() {
 	const [rows, setRows] = useState(6);
@@ -15,6 +16,7 @@ export default function LocalPlayScreen() {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [settingsResetToken, setSettingsResetToken] = useState(0);
 	const [replayOpen, setReplayOpen] = useState(false);
+	const [rulesOpen, setRulesOpen] = useState(false);
 
 	useEffect(() => {
 		const rec = getRecommendedSize();
@@ -102,7 +104,11 @@ export default function LocalPlayScreen() {
 			/>
 
 			<div className="relative mx-auto w-full shrink-0" style={hudStyle}>
-				<GameHud state={state} onSettingsOpen={() => setSettingsOpen(true)} />
+				<GameHud
+					state={state}
+					onSettingsOpen={() => setSettingsOpen(true)}
+					onShowRules={() => setRulesOpen(true)}
+				/>
 			</div>
 
 			<div
@@ -126,6 +132,7 @@ export default function LocalPlayScreen() {
 					<GameOverlay
 						state={state}
 						onReset={reset}
+						moveHistory={moveHistory}
 						onReplay={
 							moveHistory.length > 0 ? () => setReplayOpen(true) : undefined
 						}
@@ -135,7 +142,7 @@ export default function LocalPlayScreen() {
 
 			<p
 				className="relative text-center text-[10px] uppercase tracking-[0.3em] shrink-0"
-				style={{ color: "rgba(255,255,255,0.12)" }}
+				style={{ color: "rgba(255,255,255,0.42)" }}
 			>
 				Place on empty or owned cells · chains resolve automatically
 			</p>
@@ -162,6 +169,11 @@ export default function LocalPlayScreen() {
 				rows={rows}
 				cols={cols}
 				playerCount={playerCount}
+			/>
+
+			<OnboardingOverlay
+				forceOpen={rulesOpen}
+				onClose={() => setRulesOpen(false)}
 			/>
 		</main>
 	);
