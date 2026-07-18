@@ -13,7 +13,7 @@ import { vibrate, vibrationPatterns } from "../utils/vibration";
 import PlayerBadge from "./PlayerBadge";
 
 const HUD_BUTTON_CLASS_NAME =
-	"flex h-11 w-11 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3";
+	"flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070b] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 min-[480px]:h-11 min-[480px]:w-auto min-[480px]:gap-2 min-[480px]:px-3";
 const HUD_BUTTON_STYLE: React.CSSProperties = {
 	background: "rgba(255,255,255,0.02)",
 	color: "rgba(255,255,255,0.66)",
@@ -137,7 +137,7 @@ function PlayerChipsStrip({
 				return (
 					<div
 						key={playerId}
-						className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1"
+						className="flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 sm:gap-1.5 sm:px-2 sm:py-1"
 						style={{
 							background: isCurrent
 								? `color-mix(in srgb, ${color} 14%, transparent)`
@@ -149,7 +149,7 @@ function PlayerChipsStrip({
 					>
 						<PlayerBadge player={playerId} size="sm" dimmed={eliminated} />
 						<span
-							className="font-mono text-[10px] tabular-nums"
+							className="font-mono text-[9px] tabular-nums sm:text-[10px]"
 							style={{
 								color: eliminated
 									? "rgba(255,255,255,0.4)"
@@ -230,22 +230,20 @@ export default function GameHud({
 
 				<div className="flex min-w-0 flex-col">
 					<div
-						key={statusText}
-						className="cr-turn-fade flex items-center gap-2"
+						className="flex items-center gap-1.5 sm:gap-2"
 						aria-live="polite"
 						aria-atomic="true"
 					>
 						<PlayerBadge
 							player={displayPlayer}
-							size="md"
+							size="sm"
 							dimmed={isWinnerLocked && !state.winner}
 						/>
 						<span
-							className="truncate font-semibold uppercase"
+							className="truncate text-[0.72rem] font-semibold uppercase sm:text-[0.85rem]"
 							style={{
 								color: state.winner ? color : "rgba(255,255,255,0.92)",
 								fontFamily: "'Oxanium', sans-serif",
-								fontSize: "0.95rem",
 								letterSpacing: "0.14em",
 							}}
 						>
@@ -253,7 +251,7 @@ export default function GameHud({
 						</span>
 						{secondsLeft != null && (
 							<span
-								className="ml-auto font-mono text-[12px] tabular-nums"
+								className="ml-auto font-mono text-[10px] tabular-nums sm:text-[12px]"
 								style={{
 									color:
 										secondsLeft > 15
