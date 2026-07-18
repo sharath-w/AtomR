@@ -291,7 +291,7 @@ export default function AiPlayScreen() {
 						queuedMoves={queuedMoves}
 						queuedPlayer="p1"
 						keyboardNavigationEnabled={boardKeyboardEnabled}
-						canPlay={!isCpuThinking}
+						canPlay={!state.winner && !state.isDraw}
 						onPlay={(row, col) => {
 							if (
 								playerMovePendingRef.current ||
