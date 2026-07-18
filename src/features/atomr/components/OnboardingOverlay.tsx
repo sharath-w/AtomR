@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PLAYER_COLORS } from "../constants";
 
 const STORAGE_KEY = "atomr:onboarded";
@@ -23,6 +23,8 @@ function markOnboarded() {
 type OnboardingOverlayProps = {
 	/** Force open regardless of localStorage (e.g. when user taps "?"). */
 	forceOpen?: boolean;
+	/** Auto-show on first visit. Set false on routes with a turn timer. */
+	autoShow?: boolean;
 	onClose: () => void;
 };
 
@@ -121,10 +123,13 @@ function CellDemo({
 
 export default function OnboardingOverlay({
 	forceOpen = false,
+	autoShow = true,
 	onClose,
 }: OnboardingOverlayProps) {
 	const [open, setOpen] = useState(false);
 	const [step, setStep] = useState(0);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (forceOpen) {
@@ -133,11 +138,50 @@ export default function OnboardingOverlay({
 			return;
 		}
 		if (hasOnboarded()) return;
+		if (!autoShow) return;
 		// Show after a brief delay so the board settles.
 		const id = window.setTimeout(() => setOpen(true), 600);
 		return () => window.clearTimeout(id);
+	}, [forceOpen, autoShow]);
+
+	// Close when forceOpen goes false
+	useEffect(() => {
+		if (!forceOpen) setOpen(false);
 	}, [forceOpen]);
 
+	// Focus trap: move focus in on open, restore on close
+	useEffect(() => {
+		if (!open) return;
+		triggerRef.current = document.activeElement as HTMLElement;
+		const panel = panelRef.current;
+		if (panel) {
+			const focusable = panel.querySelector<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+			);
+			(focusable ?? panel).focus();
+		}
+		function handleTab(e: KeyboardEvent) {
+			if (e.key !== "Tab" || !panel) return;
+			const focusables = panel.querySelectorAll<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+			);
+			if (focusables.length === 0) return;
+			const first = focusables[0];
+			const last = focusables[focusables.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		}
+		window.addEventListener("keydown", handleTab);
+		return () => {
+			window.removeEventListener("keydown", handleTab);
+			if (triggerRef.current) triggerRef.current.focus();
+		};
+	}, [open]);
 	const handleClose = useCallback(() => {
 		markOnboarded();
 		setOpen(false);
@@ -160,22 +204,23 @@ export default function OnboardingOverlay({
 
 	return (
 		<>
-			<button
-				type="button"
-				aria-label="Close onboarding"
+			<div
+				aria-hidden
 				className="fixed inset-0 z-50"
 				style={{
 					background: "rgba(7,7,11,0.82)",
 					backdropFilter: "blur(10px)",
-					cursor: "default",
 				}}
 				onClick={handleClose}
 			/>
 			<div
+				ref={panelRef}
+				tabIndex={-1}
 				role="dialog"
 				aria-modal="true"
 				aria-label="How to play"
 				className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+				style={{ outline: "none" }}
 			>
 				<div
 					className="relative mx-4 w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5 pointer-events-auto"
@@ -190,7 +235,7 @@ export default function OnboardingOverlay({
 							style={{
 								fontFamily: "'Oxanium', sans-serif",
 								fontSize: "10px",
-								color: "rgba(255,255,255,0.3)",
+								color: "rgba(255,255,255,0.6)",
 								textTransform: "uppercase",
 								letterSpacing: "0.25em",
 							}}
@@ -201,12 +246,12 @@ export default function OnboardingOverlay({
 							type="button"
 							onClick={handleClose}
 							aria-label="Close onboarding"
-							className="transition-opacity hover:opacity-60 active:scale-95"
+							className="transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 active:scale-95"
 							style={{
 								fontFamily: "'JetBrains Mono', monospace",
 								fontSize: "18px",
 								lineHeight: 1,
-								color: "rgba(255,255,255,0.25)",
+								color: "rgba(255,255,255,0.6)",
 							}}
 						>
 							×
@@ -234,7 +279,7 @@ export default function OnboardingOverlay({
 						<button
 							type="button"
 							onClick={handleClose}
-							className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/30 transition hover:text-white/50"
+							className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/60 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
 							style={{ fontFamily: "'Oxanium', sans-serif" }}
 						>
 							skip
@@ -248,7 +293,7 @@ export default function OnboardingOverlay({
 									setStep((s) => s + 1);
 								}
 							}}
-							className="rounded-full px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.25em] transition-transform hover:scale-[1.02] active:scale-[0.97]"
+							className="rounded-full px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.25em] transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 active:scale-[0.97]"
 							style={{
 								fontFamily: "'Oxanium', sans-serif",
 								background: "oklch(0.72 0.19 23)",
