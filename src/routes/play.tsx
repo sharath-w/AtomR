@@ -151,7 +151,7 @@ function ModeBadge({
 				width: size,
 				height: size,
 				background: tint.tint,
-				boxShadow: `inset 0 0 0 1px ${tint.tint}`,
+				boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.14)`,
 			}}
 		>
 			<span style={{ color: tint.fg }}>
@@ -167,7 +167,7 @@ function PrimaryCard({ mode }: { mode: Mode }) {
 	return (
 		<Link
 			to={to}
-			className="group relative flex h-full min-h-[280px] flex-col justify-between overflow-hidden rounded-[20px] no-underline"
+			className="group relative flex h-full min-h-[280px] flex-col justify-between overflow-hidden rounded-[20px] no-underline group-focus-visible:ring-2 group-focus-visible:ring-white/70"
 			style={{
 				background:
 					"linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
@@ -200,7 +200,7 @@ function PrimaryCard({ mode }: { mode: Mode }) {
 					</h2>
 					<p className="mt-3 text-[0.98rem] leading-6 text-white/62">{copy}</p>
 					{meta ? (
-						<p className="mt-2 text-[11px] font-medium uppercase tracking-[0.2em] text-white/36">
+						<p className="mt-2 text-[11px] font-medium uppercase tracking-[0.2em] text-white/52">
 							{meta}
 						</p>
 					) : null}
@@ -212,7 +212,7 @@ function PrimaryCard({ mode }: { mode: Mode }) {
 					className="inline-flex items-center gap-2 rounded-[12px] px-5 py-3 transition duration-200 group-hover:brightness-110"
 					style={{
 						background: "rgba(255,255,255,0.92)",
-						color: "#08090d",
+						color: "#07070b",
 						boxShadow: "0 8px 24px -10px rgba(255,255,255,0.4)",
 					}}
 				>
@@ -232,7 +232,7 @@ function ModeCard({ mode }: { mode: Mode }) {
 	return (
 		<Link
 			to={to}
-			className="group relative flex h-full min-h-[150px] flex-col justify-between overflow-hidden rounded-[16px] no-underline"
+			className="group relative flex h-full min-h-[150px] flex-col justify-between overflow-hidden rounded-[16px] no-underline group-focus-visible:ring-2 group-focus-visible:ring-white/70"
 			style={{
 				background:
 					"linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015))",
@@ -253,7 +253,7 @@ function ModeCard({ mode }: { mode: Mode }) {
 
 			<div className="relative flex items-start justify-between gap-3 p-5">
 				<ModeBadge icon={icon} tint={tint} size={42} />
-				<span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-white/36">
+				<span className="text-[9px] font-semibold uppercase tracking-[0.28em] text-white/52">
 					{kicker}
 				</span>
 			</div>
@@ -265,7 +265,7 @@ function ModeCard({ mode }: { mode: Mode }) {
 					</h3>
 					<p className="mt-2 text-[0.86rem] leading-5 text-white/52">{copy}</p>
 					{meta ? (
-						<p className="mt-2 text-[10px] font-medium uppercase tracking-[0.2em] text-white/32">
+						<p className="mt-2 text-[10px] font-medium uppercase tracking-[0.2em] text-white/52">
 							{meta}
 						</p>
 					) : null}
@@ -280,7 +280,7 @@ function ModeCard({ mode }: { mode: Mode }) {
 
 function PlayPage() {
 	const mainStyle: CSSProperties = {
-		background: "#08090d",
+		background: "#07070b",
 		fontFamily: "'Oxanium', 'Segoe UI', sans-serif",
 	};
 
@@ -292,7 +292,7 @@ function PlayPage() {
 			<div className="mx-auto flex max-w-[1180px] flex-col gap-6">
 				<div className="flex items-end justify-between gap-4 px-1">
 					<div>
-						<p className="text-[10px] uppercase tracking-[0.42em] text-white/28">
+						<p className="text-[10px] uppercase tracking-[0.42em] text-white/52">
 							Play
 						</p>
 						<h1

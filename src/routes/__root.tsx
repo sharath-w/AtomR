@@ -2,10 +2,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
+	Link,
 	Outlet,
 	Scripts,
 	useRouterState,
 } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { lazy, Suspense } from "react";
 import PwaRegistration from "../components/PwaRegistration";
 import Sidebar from "../components/Sidebar";
@@ -17,7 +19,7 @@ interface MyRouterContext {
 	queryClient: QueryClient;
 }
 
-const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var mq=window.matchMedia('(prefers-color-scheme: dark)');function apply(){var prefersDark=mq.matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);root.style.colorScheme=resolved;}apply();mq.addEventListener('change',apply);}catch(e){}})();`;
 const AppDevtools = import.meta.env.DEV
 	? lazy(() => import("../components/AppDevtools"))
 	: null;
@@ -36,6 +38,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{ name: "apple-mobile-web-app-title", content: "AtomR" },
 			{ name: "mobile-web-app-capable", content: "yes" },
 			{ name: "theme-color", content: "#07070b" },
+			{
+				name: "theme-color",
+				media: "(prefers-color-scheme: light)",
+				content: "#ffffff",
+			},
 		],
 		links: [
 			{
@@ -55,13 +62,22 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	}),
 	shellComponent: RootDocument,
 	component: RootLayout,
-	notFoundComponent: () => <div>Not found</div>,
+	notFoundComponent: () => (
+		<main className="min-h-[100dvh] bg-[#07070b] text-white flex items-center justify-center">
+			<div>
+				<h1>Not found</h1>
+				<Link to="/">Go home</Link>
+			</div>
+		</main>
+	),
 });
 
 function RootLayout() {
 	const matches = useRouterState({
 		select: (state) => state.matches,
 	});
+	// NOTE: This hardcoded path list must stay in sync with the route tree.
+	// TODO: migrate to per-route `staticData: { noChrome: true }` instead.
 	const isNoChrome = matches.some(
 		(match) =>
 			match.fullPath === "/sign-in" ||
@@ -77,7 +93,7 @@ function RootLayout() {
 	return (
 		<>
 			{!isNoChrome ? <Sidebar /> : null}
-			<div className={!isNoChrome ? "min-w-0 pt-14" : undefined}>
+			<div className={!isNoChrome ? "pt-14" : undefined}>
 				<Outlet />
 			</div>
 			{!isNoChrome && AppDevtools ? (
@@ -89,7 +105,7 @@ function RootLayout() {
 	);
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: { children: ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
