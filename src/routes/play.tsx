@@ -4,6 +4,7 @@ import {
 	Outlet,
 	useRouterState,
 } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
 import {
 	Bot,
 	BrainCircuit,
@@ -13,6 +14,8 @@ import {
 	Wifi,
 } from "lucide-react";
 import type { ComponentType, CSSProperties } from "react";
+import { authClient } from "#/lib/auth-client";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/play")({
 	head: () => ({
@@ -133,6 +136,28 @@ function PlayRoute() {
 	});
 
 	return pathname === "/play" ? <PlayPage /> : <Outlet />;
+}
+
+function OnlineCounter() {
+	const { data: session } = authClient.useSession();
+	const onlineCount = useQuery(
+		api.online.getOnlineCount,
+		session?.user ? {} : "skip",
+	);
+
+	if (!session?.user || !onlineCount?.onlineCount) return null;
+
+	return (
+		<div className="flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1.5">
+			<span className="relative flex h-2 w-2">
+				<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+				<span className="relative inline-flex h-2 w-2 rounded-full bg-green-400" />
+			</span>
+			<span className="font-mono text-[11px] tabular-nums text-white/72">
+				{onlineCount.onlineCount} online
+			</span>
+		</div>
+	);
 }
 
 function ModeBadge({
@@ -302,6 +327,7 @@ function PlayPage() {
 							Pick a mode.
 						</h1>
 					</div>
+					<OnlineCounter />
 					<p className="hidden max-w-[22ch] text-right text-[12px] leading-5 text-white/38 md:block">
 						Five ways in. One tap to board.
 					</p>
