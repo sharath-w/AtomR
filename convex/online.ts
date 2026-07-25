@@ -40,10 +40,6 @@ function getOpponentPlayer(playerId: PlayerId): PlayerId {
 	return playerId === 'p1' ? 'p2' : 'p1'
 }
 
-function getPlayerUserId(match: any, playerId: PlayerId) {
-	return playerId === 'p1' ? match.player1UserId : match.player2UserId
-}
-
 function toStoredPlayerFlags(flags: any) {
 	const defaults = createPlayerFlags(false)
 	return {
@@ -267,16 +263,10 @@ async function persistResolvedMove(
 	match: any,
 	{
 		playerId,
-		userId,
-		row,
-		col,
 		now,
 		result,
 	}: {
 		playerId: PlayerId
-		userId: any
-		row: number
-		col: number
 		now: number
 		result: ReturnType<typeof applyMove>
 	},
@@ -295,17 +285,6 @@ async function persistResolvedMove(
 			queuedPremoves: shiftQueuedPremove(match.queuedPremoves, playerId),
 			endedAt: result.state.winner ? now : undefined,
 		})
-
-	await ctx.db.insert('matchMoves', {
-		matchId: match._id,
-		turnNumber: result.state.turnNumber,
-		userId,
-		playerId,
-		row,
-		col,
-		events: result.events,
-		createdAt: now,
-	})
 
 	if (!result.state.winner) {
 		await scheduleQueuedPremoveExecution(ctx, {
@@ -375,9 +354,6 @@ async function resolveTurnTimeoutIfNeeded(
 	const result = applyMove(state, move.row, move.col)
 	await persistResolvedMove(ctx, match, {
 		playerId,
-		userId: getPlayerUserId(match, playerId),
-		row: move.row,
-		col: move.col,
 		now,
 		result,
 	})
@@ -772,16 +748,13 @@ export const executeQueuedPremove = internalMutation({
 			return { executed: false }
 		}
 
-		const now = Date.now()
-		const result = applyMove(state, premove.row, premove.col)
-		await persistResolvedMove(ctx, match, {
-			playerId,
-			userId: getPlayerUserId(match, playerId),
-			row: premove.row,
-			col: premove.col,
-			now,
-			result,
-		})
+	const now = Date.now()
+	const result = applyMove(state, premove.row, premove.col)
+	await persistResolvedMove(ctx, match, {
+		playerId,
+		now,
+		result,
+	})
 
 		return {
 			executed: true,
@@ -842,9 +815,6 @@ export const submitMove = mutation({
 
 		await persistResolvedMove(ctx, match, {
 			playerId,
-			userId: viewer._id,
-			row: args.row,
-			col: args.col,
 			now,
 			result,
 		})
