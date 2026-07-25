@@ -35,6 +35,7 @@ const MIN_PRIVATE_COLS = 4
 const MAX_PRIVATE_COLS = 16
 const MAX_SEARCHING_QUEUE_SCAN = 128
 const MAX_ACTIVE_MATCH_SCAN = 24
+const PRESENCE_UPDATE_INTERVAL_MS = 30_000
 
 function getOpponentPlayer(playerId: PlayerId): PlayerId {
 	return playerId === 'p1' ? 'p2' : 'p1'
@@ -101,13 +102,12 @@ async function getViewerByAuthUserId(ctx: any, authUserId: string) {
 
 async function ensureCurrentUser(ctx: any) {
 	const authUser = await requireAuthUser(ctx)
-	const userId = await ensureUser(
+	const { _id: userId, doc: viewer } = await ensureUser(
 		ctx,
 		authUser._id,
 		authUser.name || authUser.email || 'Player',
 		authUser.email ?? undefined,
 	)
-	const viewer = await ctx.db.get(userId)
 	if (!viewer) throw new Error('User not found')
 	return { authUser, viewer, userId }
 }
@@ -192,20 +192,33 @@ async function ensureUser(
 		.unique()
 	const now = Date.now()
 	if (existing) {
-		await ctx.db.patch(existing._id, {
-			displayName,
-			email,
-			lastSeenAt: now,
-		})
-		return existing._id
+		const patch: Record<string, any> = {}
+		if (existing.displayName !== displayName) {
+			patch.displayName = displayName
+		}
+		if (existing.email !== email) {
+			patch.email = email
+		}
+		if (
+			existing.lastSeenAt === undefined ||
+			now - existing.lastSeenAt >= PRESENCE_UPDATE_INTERVAL_MS
+		) {
+			patch.lastSeenAt = now
+		}
+		if (Object.keys(patch).length > 0) {
+			await ctx.db.patch(existing._id, patch)
+		}
+		return { _id: existing._id, doc: existing }
 	}
-	return await ctx.db.insert('users', {
+	const insertedId = await ctx.db.insert('users', {
 		authUserId,
 		displayName,
 		email,
 		createdAt: now,
 		lastSeenAt: now,
 	})
+	const doc = await ctx.db.get(insertedId)
+	return { _id: insertedId, doc }
 }
 
 async function cleanupStaleQueueEntries(ctx: any, now = Date.now()) {
